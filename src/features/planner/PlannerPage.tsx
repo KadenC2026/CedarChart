@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { RemoteCourse } from "../../domain/types";
+import { useCatalog } from "../../data/catalog";
+import { earnedCourseIds, evaluateRequirement, isArchivedRequirement, localId, requirementLabel } from "../../domain/requirements";
+import RequirementChecklist from "./RequirementChecklist";
+import PriorCreditPanel from "./PriorCreditPanel";
 import { useApp } from "../../state/AppContext";
 
 const terms = [
@@ -10,83 +14,41 @@ const terms = [
   "Year 4 · Fall", "Year 4 · IAP", "Year 4 · Spring",
 ];
 
-type RequirementMeta = Record<string, string | number | boolean | null | undefined>;
 
 export default function PlannerPage() {
   const { state, dispatch } = useApp();
   const navigate = useNavigate();
-  const [catalog, setCatalog] = useState<RemoteCourse[]>([]);
-  const [requirements, setRequirements] = useState<Record<string, RequirementMeta>>({});
-  const [requirementProgress, setRequirementProgress] = useState<any>(null);
+  const { data, error: catalogError, retry } = useCatalog();
+  const catalog = data?.courses ?? [];
+  const requirements = data?.requirements ?? {};
   const [query, setQuery] = useState("");
-  const [loadingCatalog, setLoadingCatalog] = useState(true);
-  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [limit, setLimit] = useState(30);
   const [activeTerm, setActiveTerm] = useState(0);
-
-  useEffect(() => {
-    Promise.all([
-      fetch("/api/catalog").then((response) => {
-        if (!response.ok) throw new Error("catalog");
-        return response.json();
-      }),
-      fetch("/api/requirements").then((response) => response.ok ? response.json() : {}),
-    ])
-      .then(([courses, reqs]) => {
-        setCatalog(Array.isArray(courses) ? courses : []);
-        setRequirements(reqs && typeof reqs === "object" ? reqs as Record<string, RequirementMeta> : {});
-      })
-      .catch(() => setCatalogError("The MIT catalog could not be loaded."))
-      .finally(() => setLoadingCatalog(false));
-  }, []);
-
-  useEffect(() => {
-    if (!state.selectedRequirementId) {
-      setRequirementProgress(null);
-      return;
-    }
-
-    const courseIds = Array.from(new Set([
-      ...state.completedCourseIds.map((id) => id.replace(/^mit:/, "")),
-      ...state.plannedCourses.map((course) => course.courseId),
-    ]));
-
-    const params = new URLSearchParams({
-      listId: state.selectedRequirementId,
-      courses: courseIds.join(","),
-    });
-
-    fetch("/api/requirement-progress?" + params.toString())
-      .then((response) => response.ok ? response.json() : null)
-      .then(setRequirementProgress)
-      .catch(() => setRequirementProgress(null));
-  }, [state.selectedRequirementId, state.plannedCourses, state.completedCourseIds]);
+  const [showArchived, setShowArchived] = useState(false);
+  const earned = earnedCourseIds(state);
+  const planned = new Set(state.plannedCourses.map(c => localId(c.courseId)));
+  const catalogMap = useMemo(() => new Map(catalog.map(c => [c.subject_id, c])), [catalog]);
+  const selectedRequirement = state.selectedRequirementId ? requirements[state.selectedRequirementId] : undefined;
+  const progress = selectedRequirement ? evaluateRequirement(selectedRequirement, earned, catalogMap) : null;
+  const projected = selectedRequirement ? evaluateRequirement(selectedRequirement, new Set([...earned, ...planned]), catalogMap) : null;
 
   const matches = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return [];
+    if (!normalized) return catalog;
     return catalog
       .filter((course) =>
         course.subject_id.toLowerCase().includes(normalized) ||
         course.title.toLowerCase().includes(normalized) ||
         (course.description ?? "").toLowerCase().includes(normalized),
-      )
-      .slice(0, 30);
+      );
   }, [catalog, query]);
 
   const requirementOptions = useMemo(() =>
     Object.entries(requirements)
-      .map(([id, meta]) => ({
-        id,
-        label: String(
-          meta["medium-title"] ??
-          meta["title-no-degree"] ??
-          meta.title ??
-          meta["short-title"] ??
-          id
-        ),
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label)),
-  [requirements]);
+      .filter(([id, meta]) => (id.startsWith("major") || id.startsWith("minor")) && (showArchived || !isArchivedRequirement(meta)))
+      .map(([id, meta]) => ({ id, label: requirementLabel(meta) }))
+      .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true })),
+  [requirements, showArchived]);
 
   function addCourse(course: RemoteCourse) {
     dispatch({
@@ -112,7 +74,7 @@ export default function PlannerPage() {
         <div className="eyebrow">Your MIT road</div>
         <h1>Plan your classes. Open a progression when a course matters.</h1>
         <p className="lede">
-          Search the current MIT catalog, place subjects into a four-year plan,
+          Search the imported MIT catalog, place subjects into a four-year plan,
           track a major or minor, and open a generated course progression without editing the graph itself.
         </p>
       </div>
@@ -123,17 +85,18 @@ export default function PlannerPage() {
           <input
             id="course-search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => { setQuery(event.target.value); setLimit(30); }}
             placeholder="Search 6.3900, linear algebra, climate…"
           />
-          <select value={activeTerm} onChange={(event) => setActiveTerm(Number(event.target.value))}>
+          <select aria-label="Term to add courses to" value={activeTerm} onChange={(event) => setActiveTerm(Number(event.target.value))}>
             {terms.map((term, index) => <option value={index} key={term}>{term}</option>)}
           </select>
 
-          {loadingCatalog && <p className="supporting">Loading MIT catalog…</p>}
-          {catalogError && <p className="error-note">{catalogError}</p>}
+          {!data && !catalogError && <p className="supporting">Loading MIT catalog…</p>}
+          {catalogError && <p className="error-note">{catalogError} <button onClick={retry}>Retry</button></p>}
+          {data && <p className="data-note">{catalog.length.toLocaleString()} imported subjects · {matches.length.toLocaleString()} matches · Updated {new Date(data.importedAt).toLocaleDateString()}</p>}
           <div className="catalog-results">
-            {matches.map((course) => (
+            {matches.slice(0, limit).map((course) => (
               <div className="catalog-result" key={course.subject_id}>
                 <button className="course-result-main" onClick={() => openProgression(course.subject_id)}>
                   <strong>{course.subject_id}</strong>
@@ -144,6 +107,8 @@ export default function PlannerPage() {
               </div>
             ))}
           </div>
+          {matches.length > limit && <button className="text-button" onClick={() => setLimit(n => n + 30)}>Show more subjects</button>}
+          {data && !matches.length && <p>No subjects match your search.</p>}
         </div>
 
         <aside className="requirements-panel">
@@ -159,32 +124,32 @@ export default function PlannerPage() {
             ))}
           </select>
 
-          {requirementProgress && (
-            <div className="requirement-summary">
-              <strong>{requirementProgress.title ?? requirementProgress["medium-title"] ?? "Requirement progress"}</strong>
-              {typeof requirementProgress.percent_fulfilled === "number" && (
-                <>
-                  <div className="progress-track">
-                    <div
-                      className="progress-fill"
-                      style={{ width: String(Math.min(100, requirementProgress.percent_fulfilled)) + "%" }}
-                    />
-                  </div>
-                  <span>{Math.round(requirementProgress.percent_fulfilled)}% fulfilled</span>
-                </>
-              )}
-              <small>Calculated from this road using FireRoad requirement data.</small>
+          <label className="check-row archived-toggle"><input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)} /> Show older programs</label>
+          {selectedRequirement && progress && projected && <>
+            <div className="requirement-summary" aria-live="polite">
+              <strong>{requirementLabel(selectedRequirement)}</strong>
+              <div className="progress-track" role="progressbar" aria-label="Completed requirements" aria-valuenow={Math.round(progress.fraction * 100)} aria-valuemin={0} aria-valuemax={100}>
+                <div className="progress-fill" style={{ width: `${progress.fraction * 100}%` }} />
+              </div>
+              <span>{Math.round(progress.fraction * 100)}% completed · {Math.round(projected.fraction * 100)}% including planned</span>
+              <small>Planning estimate from imported requirements. Checked subjects and prior credit count as completed; scheduled classes count only as planned.</small>
+              {progress.review && <small>Some electives or special rules require advisor review and are not automatically marked complete.</small>}
             </div>
-          )}
+            <div className="requirements-checklist"><RequirementChecklist requirement={selectedRequirement} catalog={catalogMap} earned={earned} planned={planned} /></div>
+          </>}
+          {state.selectedRequirementId && data && !selectedRequirement && <p className="error-note">This saved program is no longer available. Choose a program above.</p>}
+
         </aside>
       </div>
+
+      <PriorCreditPanel catalog={catalog} />
 
       <div className="road-grid">
         {terms.map((term, termIndex) => {
           const planned = state.plannedCourses.filter((course) => course.term === termIndex);
           const units = planned.reduce((sum, course) => sum + (course.units ?? 0), 0);
           return (
-            <article className="term-card" key={term}>
+            <article className={`term-card ${activeTerm === termIndex ? "active-term" : ""}`} key={term}>
               <div className="term-heading">
                 <h2>{term}</h2>
                 <span>{units} units</span>
@@ -196,6 +161,9 @@ export default function PlannerPage() {
                       <strong>{course.courseId}</strong>
                       <span>{course.title}</span>
                     </button>
+                    <label className="planned-completed" title="Mark completed"><input type="checkbox" aria-label={`Completed ${course.courseId}`} checked={earned.has(localId(course.courseId))}
+                      disabled={state.priorCredits.some(c => localId(c.courseId) === localId(course.courseId))}
+                      onChange={() => dispatch({ type: "TOGGLE_COMPLETED", courseId: `mit:${localId(course.courseId)}` })} /></label>
                     <button
                       className="remove-course"
                       aria-label={"Remove " + course.courseId}

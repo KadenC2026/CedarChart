@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { Background, Controls, MarkerType, ReactFlow, type Edge, type Node } from "@xyflow/react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { Background, Controls, MarkerType, Position, ReactFlow, type Edge, type Node } from "@xyflow/react";
 import type { RemoteCourse } from "../../domain/types";
+import { useCatalog } from "../../data/catalog";
+import { earnedCourseIds } from "../../domain/requirements";
+import { progressionGroups, referencesCourse } from "../../domain/progression";
 import { useApp } from "../../state/AppContext";
-
-function mentionsCourse(text: string | undefined, subjectId: string) {
-  if (!text) return false;
-  const escaped = subjectId.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
-  return new RegExp("(^|[^A-Za-z0-9.])" + escaped + "([^A-Za-z0-9.]|$)").test(text);
-}
 
 function offeringText(course: RemoteCourse) {
   const terms = [
@@ -24,44 +21,34 @@ export default function PathwayPage() {
   const { courseId } = useParams();
   const { state, dispatch } = useApp();
   const subjectId = decodeURIComponent(courseId ?? "").replace(/^mit:/, "");
-  const [target, setTarget] = useState<RemoteCourse | null>(null);
-  const [catalog, setCatalog] = useState<RemoteCourse[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, error, retry } = useCatalog();
+  const navigate = useNavigate();
+  const catalog = data?.courses ?? [];
+  const target = catalog.find(c => c.subject_id === subjectId);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [branchPage, setBranchPage] = useState(0);
   const [showMoreAfter, setShowMoreAfter] = useState(false);
-
-  useEffect(() => {
-    if (!subjectId) return;
-    setLoading(true);
-    Promise.all([
-      fetch("/api/course?id=" + encodeURIComponent(subjectId)).then((r) => {
-        if (!r.ok) throw new Error("course");
-        return r.json();
-      }),
-      fetch("/api/catalog").then((r) => r.ok ? r.json() : []),
-    ])
-      .then(([course, all]) => {
-        setTarget(course);
-        setCatalog(Array.isArray(all) ? all : []);
-      })
-      .catch(() => setTarget(null))
-      .finally(() => setLoading(false));
-  }, [subjectId]);
-
+  useEffect(() => { setExpanded(new Set()); setShowMoreAfter(false); setBranchPage(0); }, [subjectId]);
+  function toggleGroup(id: string) {
+    setExpanded(previous => { const next = new Set(previous); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  }
   const prerequisiteCourses = useMemo(() => {
     if (!target?.prerequisites) return [];
     return catalog
-      .filter((course) => course.subject_id !== subjectId && mentionsCourse(target.prerequisites, course.subject_id))
-      .sort((a, b) => a.subject_id.localeCompare(b.subject_id))
-      .slice(0, 12);
+      .filter((course) => course.subject_id !== subjectId && referencesCourse(target.prerequisites, course))
+      .sort((a, b) => a.subject_id.localeCompare(b.subject_id));
   }, [target, catalog, subjectId]);
 
   const downstreamCourses = useMemo(() => {
     return catalog
-      .filter((course) => course.subject_id !== subjectId && mentionsCourse(course.prerequisites, subjectId))
+      .filter((course) => course.subject_id !== subjectId && target && referencesCourse(course.prerequisites, target))
       .sort((a, b) => a.subject_id.localeCompare(b.subject_id));
-  }, [catalog, subjectId]);
+  }, [catalog, subjectId, target]);
 
-  if (loading) {
+  const groups = useMemo(() => progressionGroups(downstreamCourses, data?.requirements ?? {}), [downstreamCourses, data]);
+
+  if (error) return <section className="page"><p className="error-note">{error}</p><button onClick={retry}>Retry</button></section>;
+  if (!data) {
     return <section className="page"><p>Building course progression…</p></section>;
   }
 
@@ -74,46 +61,41 @@ export default function PathwayPage() {
     );
   }
 
-  const before = prerequisiteCourses;
-  const after = showMoreAfter ? downstreamCourses.slice(0, 12) : downstreamCourses.slice(0, 6);
-
-  const nodes: Node[] = [
-    ...before.map((course, index) => ({
-      id: "before:" + course.subject_id,
-      position: { x: 0, y: index * 110 },
-      data: { label: <div className="progression-node"><strong>{course.subject_id}</strong><span>{course.title}</span></div> },
-      className: "progression-course prerequisite-course",
-    })),
-    {
-      id: "target",
-      position: { x: 360, y: Math.max(80, ((Math.max(before.length, after.length) - 1) * 110) / 2) },
-      data: { label: <div className="progression-node"><strong>{target.subject_id}</strong><span>{target.title}</span></div> },
-      className: "progression-course target-course",
-    },
-    ...after.map((course, index) => ({
-      id: "after:" + course.subject_id,
-      position: { x: 720, y: index * 110 },
-      data: { label: <div className="progression-node"><strong>{course.subject_id}</strong><span>{course.title}</span></div> },
-      className: "progression-course downstream-course",
-    })),
-  ];
-
-  const edges: Edge[] = [
-    ...before.map((course) => ({
-      id: "edge-before-" + course.subject_id,
-      source: "before:" + course.subject_id,
-      target: "target",
-      markerEnd: { type: MarkerType.ArrowClosed },
-    })),
-    ...after.map((course) => ({
-      id: "edge-after-" + course.subject_id,
-      source: "target",
-      target: "after:" + course.subject_id,
-      markerEnd: { type: MarkerType.ArrowClosed },
-    })),
-  ];
-
-  const completed = state.completedCourseIds.includes("mit:" + target.subject_id);
+  const nodes: Node[] = [];
+  const edges: Edge[] = [];
+  const addEdge = (source: string, target: string) => edges.push({ id: `${source}->${target}`, source, target, markerEnd: { type: MarkerType.ArrowClosed } });
+  const courseNode = (course: RemoteCourse, id: string, x: number, y: number, className: string): Node => ({
+    id, position: { x, y }, sourcePosition: Position.Right, targetPosition: Position.Left,
+    data: { courseId: course.subject_id, label: <div className="progression-node"><strong>{course.subject_id}</strong><span>{course.title}</span></div> },
+    className: `progression-course ${className}`,
+  });
+  let row = 0;
+  const visibleGroups = expanded.size ? groups.filter(group => expanded.has(group.id)) : groups.slice(branchPage * 6, branchPage * 6 + 6);
+  for (const group of visibleGroups) {
+    const isExpanded = expanded.has(group.id);
+    const height = isExpanded ? Math.max(140, group.courses.length * 110) : 150;
+    const id = `major:${group.id}`;
+    nodes.push({ id, position: { x: 660, y: row + height / 2 - 50 }, sourcePosition: Position.Right, targetPosition: Position.Left,
+      data: { label: <button className="major-node-button nodrag" aria-expanded={isExpanded} onClick={() => toggleGroup(group.id)}>
+        <strong>{group.label}</strong><span>{group.courses.length} connected subjects · {isExpanded ? "Collapse −" : "Expand +"}</span></button> },
+      className: "progression-major" });
+    addEdge("target", id);
+    if (isExpanded) group.courses.forEach((course, index) => {
+      const courseId = `${id}:${course.subject_id}`;
+      nodes.push(courseNode(course, courseId, 1060, row + index * 110, "downstream-course"));
+      addEdge(id, courseId);
+    });
+    row += height + 30;
+  }
+  const center = Math.max(0, row / 2 - 50);
+  nodes.push(courseNode(target, "target", 320, center, "target-course"));
+  prerequisiteCourses.forEach((course, index) => {
+    const id = `before:${course.subject_id}`;
+    nodes.push(courseNode(course, id, 0, Math.max(0, center - prerequisiteCourses.length * 55) + index * 110, "prerequisite-course"));
+    addEdge(id, "target");
+  });
+  const completed = earnedCourseIds(state).has(target.subject_id);
+  const priorCredit = state.priorCredits.find(c => c.courseId === `mit:${target.subject_id}`);
 
   return (
     <section className="page progression-page">
@@ -129,9 +111,10 @@ export default function PathwayPage() {
         <div className="course-actions-stack">
           <button
             className={completed ? "secondary-button completed-button" : "secondary-button"}
+            disabled={Boolean(priorCredit)}
             onClick={() => dispatch({ type: "TOGGLE_COMPLETED", courseId: "mit:" + target.subject_id })}
           >
-            {completed ? "Completed ✓" : "Mark completed"}
+            {priorCredit ? priorCredit.source === "ase" ? "Passed ASE ✓" : "Prior credit ✓" : completed ? "Completed ✓" : "Mark completed"}
           </button>
           <a className="primary-button link-button" href={target.url ?? "https://catalog.mit.edu/"} target="_blank" rel="noreferrer">
             Official catalog ↗
@@ -156,13 +139,23 @@ export default function PathwayPage() {
           <span>Your selected destination</span>
         </div>
         <div>
-          <strong>Can lead to</strong>
-          <span>Courses whose prerequisite text references this subject</span>
+          <strong>Choose a major</strong>
+          <span>Expand a program to see connected subjects</span>
         </div>
       </div>
 
+      <p className="data-note">Click a major to expand its subjects, then click a subject to follow its progression. Branches include subjects in the program’s department and its listed requirements; other subjects are grouped by department. Connections include GIR references and do not imply all prerequisites are satisfied.</p>
+      <div className="major-chips">{groups.map(group => <button className="chip" key={group.id} aria-expanded={expanded.has(group.id)} onClick={() => toggleGroup(group.id)}>{group.label} {expanded.has(group.id) ? "−" : "+"}</button>)}</div>
+      {groups.length > 6 && <div className="branch-pagination">
+        {expanded.size ? <button className="secondary-button" onClick={() => setExpanded(new Set())}>Back to all branches</button> : <>
+          <button className="secondary-button" disabled={branchPage === 0} onClick={() => setBranchPage(n => n - 1)}>Previous branches</button>
+          <span>Branches {branchPage * 6 + 1}–{Math.min(groups.length, branchPage * 6 + 6)} of {groups.length}</span>
+          <button className="secondary-button" disabled={(branchPage + 1) * 6 >= groups.length} onClick={() => setBranchPage(n => n + 1)}>Next branches</button>
+        </>}
+      </div>}
       <div className="progression-graph">
         <ReactFlow
+          key={subjectId + branchPage + [...expanded].sort().join(",")}
           nodes={nodes}
           edges={edges}
           fitView
@@ -171,7 +164,8 @@ export default function PathwayPage() {
           elementsSelectable={false}
           panOnDrag
           zoomOnScroll
-          minZoom={0.45}
+          onNodeClick={(_, node) => { if (node.data.courseId && node.id !== "target") navigate("/course/" + encodeURIComponent("mit:" + node.data.courseId)); }}
+          minZoom={0.03}
           maxZoom={1.5}
         >
           <Background gap={24} />
@@ -201,7 +195,7 @@ export default function PathwayPage() {
             <>
               <p>{downstreamCourses.length} current catalog course{downstreamCourses.length === 1 ? "" : "s"} reference {target.subject_id} in their prerequisite text.</p>
               <div className="downstream-list">
-                {downstreamCourses.slice(0, showMoreAfter ? 30 : 8).map((course) => (
+                {downstreamCourses.slice(0, showMoreAfter ? undefined : 8).map((course) => (
                   <Link to={"/course/" + encodeURIComponent("mit:" + course.subject_id)} key={course.subject_id}>
                     <strong>{course.subject_id}</strong> {course.title}
                   </Link>

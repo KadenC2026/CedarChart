@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useReducer, type ReactNode } from "react";
-import type { AppState, InterestSearchResult, PlannedCourse } from "../domain/types";
+import type { AppState, InterestSearchResult, PlannedCourse, PriorCredit } from "../domain/types";
 
 type Action =
   | { type: "SELECT_COURSE"; courseId: string }
@@ -12,10 +12,13 @@ type Action =
   | { type: "REMOVE_PLANNED_COURSE"; courseId: string; term: number }
   | { type: "MOVE_PLANNED_COURSE"; courseId: string; fromTerm: number; toTerm: number }
   | { type: "SET_REQUIREMENT"; requirementId: string | null }
+  | { type: "SET_PRIOR_CREDIT"; credit: PriorCredit }
+  | { type: "REMOVE_PRIOR_CREDIT"; courseId: string }
   | { type: "RESET" };
 
 const initialState: AppState = {
   completedCourseIds: [],
+  priorCredits: [],
   selectedCourseId: null,
   highlightedCourseIds: [],
   targetCourseId: null,
@@ -25,7 +28,7 @@ const initialState: AppState = {
   selectedRequirementId: null,
 };
 
-function reducer(state: AppState, action: Action): AppState {
+export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case "SELECT_COURSE":
       return { ...state, selectedCourseId: action.courseId };
@@ -70,6 +73,10 @@ function reducer(state: AppState, action: Action): AppState {
       };
     case "SET_REQUIREMENT":
       return { ...state, selectedRequirementId: action.requirementId };
+    case "SET_PRIOR_CREDIT":
+      return { ...state, priorCredits: [...state.priorCredits.filter(c => c.courseId !== action.credit.courseId), action.credit] };
+    case "REMOVE_PRIOR_CREDIT":
+      return { ...state, priorCredits: state.priorCredits.filter(c => c.courseId !== action.courseId) };
     case "RESET":
       return initialState;
   }

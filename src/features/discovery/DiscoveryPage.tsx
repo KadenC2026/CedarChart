@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { InterestSearchResult } from "../../domain/types";
+import { loadCatalog } from "../../data/catalog";
 import { useApp } from "../../state/AppContext";
 
 const examples = [
@@ -23,6 +24,8 @@ export default function DiscoveryPage() {
     setMethodNote(null);
 
     try {
+      const catalogData = await loadCatalog();
+      const validIds = new Set(catalogData.courses.map(c => `mit:${c.subject_id}`));
       const response = await fetch("/api/recommend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -30,15 +33,26 @@ export default function DiscoveryPage() {
       });
       if (!response.ok) throw new Error("recommendation endpoint unavailable");
       const data = await response.json();
-      const results = Array.isArray(data.results) ? data.results.slice(0, 5) as InterestSearchResult[] : [];
+      const results = Array.isArray(data.results) ? (data.results as InterestSearchResult[]).filter(result => validIds.has(result.courseId)).slice(0, 5) : [];
       dispatch({ type: "SET_RECOMMENDATIONS", results });
       const keywordOnly = results.length > 0 && results.every((result) => result.recommendationMethod === "keyword");
       setMethodNote(keywordOnly
-        ? "Showing deterministic matches from the current MIT catalog."
-        : "AI-assisted recommendations grounded in the current MIT catalog.");
+        ? "Showing deterministic matches from the imported MIT catalog."
+        : "AI-assisted recommendations grounded in the imported MIT catalog.");
     } catch {
-      dispatch({ type: "SET_RECOMMENDATIONS", results: [] });
-      setMethodNote("Course discovery is temporarily unavailable.");
+      try {
+        const { courses } = await loadCatalog();
+        const terms = query.toLowerCase().split(/[^\w.]+/).filter(term => term.length > 2);
+        const matches = courses.map(course => {
+          const text = `${course.subject_id} ${course.title} ${course.description ?? ""}`.toLowerCase();
+          return { course, score: terms.reduce((score, term) => score + (text.includes(term) ? 1 : 0), 0) };
+        }).filter(match => match.score > 0).sort((a, b) => b.score - a.score).slice(0, 5);
+        dispatch({ type: "SET_RECOMMENDATIONS", results: matches.map(({ course }) => ({ courseId: `mit:${course.subject_id}`, title: course.title, relevanceExplanation: "Keyword match from the imported MIT catalog.", supportingCatalogText: course.description ?? course.title, recommendationMethod: "keyword" })) });
+        setMethodNote(matches.length ? "Showing local keyword matches from the imported MIT catalog." : "No catalog matches. Try a subject number or a more specific interest.");
+      } catch {
+        dispatch({ type: "SET_RECOMMENDATIONS", results: [] });
+        setMethodNote("Course discovery is temporarily unavailable.");
+      }
     } finally {
       setLoading(false);
     }
@@ -54,7 +68,7 @@ export default function DiscoveryPage() {
       <div className="eyebrow">AI course discovery</div>
       <h1>Tell us what interests you. We’ll find where it leads.</h1>
       <p className="lede">
-        CedarChart searches the current MIT catalog, recommends real subjects, and opens a generated
+        CedarChart searches the imported MIT catalog, recommends real subjects, and opens a generated
         progression showing what comes before the course and what it can lead to.
       </p>
 

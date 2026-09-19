@@ -51,3 +51,39 @@ Recommended host: Vercel.
 - Build command: `npm run build`
 - Output directory: `dist`
 - Add `OPENAI_API_KEY` and optionally `OPENAI_MODEL` in Vercel Environment Variables.
+
+## Catalog, requirements, and prior credit
+
+The planner and progression use a checked-in FireRoad snapshot in `public/data/`:
+7,182 subjects and 162 requirement trees imported on September 19, 2026. This is
+all records returned by the source, including graduate and special subjects, not
+a guarantee that every record is offered this semester. Empty source titles are
+shown as “Title unavailable in source.” Refresh the snapshot with Python 3 and curl:
+
+```bash
+python3 scripts/import_catalog.py
+```
+
+The importer validates unique subject IDs and downloads every requirement tree
+before writing data. Import provenance and counts are in `public/data/manifest.json`.
+See [FireRoad's requirement format](https://fireroad.mit.edu/reference/requirements).
+
+- Major/minor labels include Course number, name, and program variant.
+- Check subjects in the requirements panel or term cards to mark them completed.
+- Prior credit accepts credited MIT subjects and distinguishes passed ASEs from
+  AP/IB/transfer credit. Removing credit does not erase a separate completion mark.
+- Completed progress uses checked subjects plus credit; projected progress also
+  includes the plan. Duplicate subjects count once.
+- Percentages are local planning estimates, not degree audits. All/any groups,
+  explicit subjects, GIR attributes, and GTE subject/unit/distinct thresholds are
+  evaluated. All-groups average child progress, any-groups use the best option,
+  and thresholds count distinct matched subjects or their units. Free-form electives, missing/legacy subjects, and unsupported
+  constraints remain flagged for review. Whole-degree GIRs are only included when
+  present in the selected program's source tree.
+- Progression groups prerequisite references by major/department. Expand a branch
+  to reveal every matching subject; select a subject to continue. GIR prerequisite
+  references are included. Corequisites remain separate, and graph edges do not
+  assert eligibility or replace the original prerequisite rule.
+- State persists in this browser. Existing saved plans and completions are retained.
+- Local development does not require serverless API routes for planning, progress,
+  graphs, or keyword discovery. AI discovery still uses the deployed server API.

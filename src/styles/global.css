@@ -186,3 +186,33 @@ textarea:focus, input:focus, select:focus { border-color: var(--green); box-shad
   .course-result-main { grid-template-columns:70px 1fr; }
   .course-result-main small { display:none; }
 }
+
+/* Requirements and credit share the same completion state. */
+.planner-tools { grid-template-columns: minmax(0, 1fr) minmax(360px, 1fr); align-items: start; }
+.requirements-checklist { max-height: 520px; overflow: auto; margin-top: 18px; }
+.requirement-group { margin: 12px 0; padding-left: 12px; border-left: 2px solid var(--border); }
+.requirement-group-heading { display: grid; gap: 4px; }
+.requirement-group-heading small, .requirement-leaf small, .credit-item small { display: block; color: var(--muted); font-size: 12px; font-weight: 400; margin-top: 3px; }
+.requirements-panel .check-row { display: flex; font-size: 13px; font-weight: 400; line-height: 1.5; }
+.check-row input { flex: 0 0 auto; accent-color: var(--green); width: 17px; height: 17px; }
+.requirements-panel .archived-toggle { margin: 8px 0 0; border: 0; }
+.prior-credit-panel { border: 1px solid var(--border); border-radius: 18px; background: var(--surface); padding: 22px; margin-bottom: 24px; }
+.prior-credit-panel h2 { margin: 6px 0; }
+.credit-controls { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; }
+.credit-controls label { display: grid; gap: 8px; font-weight: 700; }
+.credit-course { flex: 1; padding: 12px 0; }
+.credit-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 16px; }
+.credit-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--green-soft); border-radius: 12px; }
+.active-term { border-color: var(--green); }
+.planned-completed { display: flex; align-items: center; padding: 8px; }
+.planned-completed input { width: 17px; height: 17px; accent-color: var(--green); }
+.progression-major { width: 310px !important; padding: 0 !important; border: 1px solid var(--green) !important; border-radius: 14px !important; overflow: hidden; }
+.major-node-button { display: grid; gap: 8px; background: var(--green-soft); color: var(--green); border: 0; width: 100%; min-height: 100px; padding: 16px; cursor: pointer; }
+.major-node-button span { font-size: 12px; }
+.major-chips { display: flex; flex-wrap: wrap; gap: 8px; max-height: 160px; overflow: auto; margin-bottom: 12px; }
+.major-chips .chip[aria-expanded="true"] { background: var(--green); color: white; }
+button:focus-visible, a:focus-visible { outline: 3px solid #b98c38; outline-offset: 3px; }
+button:disabled { cursor: default; opacity: .65; }
+@media (max-width: 900px) { .planner-tools { grid-template-columns: 1fr; } }
+@media (max-width: 620px) { .credit-controls, .credit-list { grid-template-columns: 1fr; } }
+.branch-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; font-size: 13px; }

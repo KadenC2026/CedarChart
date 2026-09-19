@@ -25,6 +25,8 @@ export type Course = {
 
 export type RemoteCourse = {
   subject_id: string;
+  gir_attribute?: string;
+  equivalent_subjects?: string[];
   title: string;
   description?: string;
   total_units?: number;
@@ -65,6 +67,7 @@ export type EvaluationResult = {
 
 export type AppState = {
   completedCourseIds: string[];
+  priorCredits: PriorCredit[];
   selectedCourseId: string | null;
   highlightedCourseIds: string[];
   targetCourseId: string | null;
@@ -73,3 +76,22 @@ export type AppState = {
   plannedCourses: PlannedCourse[];
   selectedRequirementId: string | null;
 };
+
+export type PriorCredit = { courseId: string; source: "prior" | "ase" };
+export type RequirementThreshold = { type: "LT" | "GT" | "LTE" | "GTE"; cutoff: number; criterion: "subjects" | "units" };
+export type Requirement = {
+  "list-id"?: string;
+  "short-title"?: string;
+  "medium-title"?: string;
+  "title-no-degree"?: string;
+  title?: string;
+  desc?: string;
+  req?: string;
+  "plain-string"?: boolean;
+  reqs?: Requirement[];
+  "connection-type"?: "all" | "any";
+  threshold?: RequirementThreshold;
+  "distinct-threshold"?: RequirementThreshold;
+  "threshold-desc"?: string;
+};
+export type CatalogData = { courses: RemoteCourse[]; requirements: Record<string, Requirement>; importedAt: string };
