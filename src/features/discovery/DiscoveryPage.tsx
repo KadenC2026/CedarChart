@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import type { InterestSearchResult, RemoteCourse } from "../../domain/types";
 import { loadCatalog, useCatalog } from "../../data/catalog";
 import {
-  activeFilterCount,
-  compareSubjectIds,
   departmentOptions,
   emptyFilters,
+  hasTitleMatch,
   matchesFilters,
+  searchCourses,
   type CourseFilters,
 } from "../../domain/courseSearch";
 import { localId } from "../../domain/requirements";
@@ -21,45 +21,18 @@ const examples = [
   "I care about climate change and data",
 ];
 
-/**
- * Deterministic interest matching used when the AI endpoint is unavailable or when no
- * AI recommendation survives the filters. Subject-number and title hits outrank
- * description mentions so one department cannot dominate on a single shared word.
- */
-function interestMatches(
+function keywordResults(
   courses: RemoteCourse[],
   query: string,
   filters: CourseFilters,
 ): InterestSearchResult[] {
-  const terms = query.toLowerCase().split(/[^\w.]+/).filter((term) => term.length > 2);
-  if (!terms.length) return [];
-
-  return courses
-    .filter((course) => matchesFilters(course, filters))
-    .map((course) => {
-      const id = course.subject_id.toLowerCase();
-      const title = course.title.toLowerCase();
-      const description = (course.description ?? "").toLowerCase();
-      const score = terms.reduce(
-        (total, term) =>
-          total +
-          (id.includes(term) ? 4 : 0) +
-          (title.includes(term) ? 3 : 0) +
-          (description.includes(term) ? 1 : 0),
-        0,
-      );
-      return { course, score };
-    })
-    .filter((match) => match.score > 0)
-    .sort((a, b) => b.score - a.score || compareSubjectIds(a.course.subject_id, b.course.subject_id))
-    .slice(0, 5)
-    .map(({ course }) => ({
-      courseId: `mit:${course.subject_id}`,
-      title: course.title,
-      relevanceExplanation: "Keyword match from the imported MIT catalog.",
-      supportingCatalogText: course.description ?? course.title,
-      recommendationMethod: "keyword" as const,
-    }));
+  return searchCourses(courses, { query, filters, limit: 5 }).map((course) => ({
+    courseId: `mit:${course.subject_id}`,
+    title: course.title,
+    relevanceExplanation: "Keyword match from the imported MIT catalog.",
+    supportingCatalogText: course.description ?? course.title,
+    recommendationMethod: "keyword" as const,
+  }));
 }
 
 export default function DiscoveryPage() {
@@ -106,28 +79,30 @@ export default function DiscoveryPage() {
       const returned = Array.isArray(data.results) ? (data.results as InterestSearchResult[]) : [];
       // Every AI-returned id must exist in the checked-in catalog before it is shown.
       const grounded = returned.filter((result) => catalogById.has(localId(result.courseId)));
-      const results = grounded
+      const visible = grounded
         .filter((result) => matchesFilters(catalogById.get(localId(result.courseId))!, filters))
         .slice(0, 5);
+      const aiPicks = visible
+        .filter((result) => result.recommendationMethod === "AI")
+        .map((result) => catalogById.get(localId(result.courseId))!);
+      const local = keywordResults(catalogData.courses, query, filters);
 
-      if (!results.length && grounded.length && activeFilterCount(filters) > 0) {
-        const fallback = interestMatches(catalogData.courses, query, filters);
-        dispatch({ type: "SET_RECOMMENDATIONS", results: fallback });
-        setMethodNote(fallback.length
-          ? "No AI recommendation matched your filters, so these are deterministic keyword matches inside them."
-          : "No subject matches your interest inside the current filters.");
+      // The recommend API used to treat every mention equally, so "algorithms" came
+      // back as Course 1. Keep AI only when it actually found a title-level match.
+      if (visible.length && hasTitleMatch(aiPicks, query)) {
+        dispatch({ type: "SET_RECOMMENDATIONS", results: visible });
+        setMethodNote("AI-assisted recommendations grounded in the imported MIT catalog.");
         return;
       }
 
-      dispatch({ type: "SET_RECOMMENDATIONS", results });
-      const keywordOnly = results.length > 0 && results.every((result) => result.recommendationMethod === "keyword");
-      setMethodNote(keywordOnly
+      dispatch({ type: "SET_RECOMMENDATIONS", results: local });
+      setMethodNote(local.length
         ? "Showing deterministic matches from the imported MIT catalog."
-        : "AI-assisted recommendations grounded in the imported MIT catalog.");
+        : "No subject matches that search with these filters.");
     } catch {
       try {
         const { courses } = await loadCatalog();
-        const matches = interestMatches(courses, query, filters);
+        const matches = keywordResults(courses, query, filters);
         dispatch({ type: "SET_RECOMMENDATIONS", results: matches });
         setMethodNote(matches.length
           ? "Showing local keyword matches from the imported MIT catalog."

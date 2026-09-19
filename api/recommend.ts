@@ -1,4 +1,6 @@
 import OpenAI from "openai";
+import { emptyFilters, searchCourses } from "../src/domain/courseSearch";
+import type { RemoteCourse } from "../src/domain/types";
 
 type CatalogCourse = {
   subject_id: string;
@@ -7,16 +9,11 @@ type CatalogCourse = {
 };
 
 function prefilter(query: string, courses: CatalogCourse[]) {
-  const terms = query.toLowerCase().split(/\W+/).filter((term) => term.length > 2);
-  return courses
-    .map((course) => {
-      const haystack = (course.subject_id + " " + course.title + " " + (course.description ?? "")).toLowerCase();
-      const score = terms.reduce((sum, term) => sum + (haystack.includes(term) ? 1 : 0), 0);
-      return { course, score };
-    })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 80)
-    .map(({ course }) => course);
+  return searchCourses(courses as RemoteCourse[], {
+    query,
+    filters: emptyFilters,
+    limit: 80,
+  });
 }
 
 export default async function handler(req: any, res: any) {

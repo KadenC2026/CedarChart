@@ -101,12 +101,18 @@ function condensed(value: string) {
   return value.replace(/[^a-z0-9]/g, "");
 }
 
+/** Every query token appears in the title. Description-only mentions score 200. */
+export const TITLE_MATCH_SCORE = 540;
+
 /**
  * Relevance ranking: a subject number beats a title match, and a title match beats a
  * description mention. Without this, a search for "algorithms" is dominated by whichever
  * department happens to sort first among thousands of description-only mentions.
  */
-export function searchScore(course: RemoteCourse, rawQuery: string) {
+export function searchScore(
+  course: Pick<RemoteCourse, "subject_id" | "title" | "description">,
+  rawQuery: string,
+) {
   const query = rawQuery.trim().toLowerCase();
   if (!query) return 0;
 
@@ -178,6 +184,14 @@ export function searchCourses(catalog: RemoteCourse[], options: CourseSearchOpti
     : [...allowed].sort((a, b) => compareSubjectIds(a.subject_id, b.subject_id));
 
   return typeof limit === "number" ? ranked.slice(0, limit) : ranked;
+}
+
+/** True when any of these subjects has the query in its title, not just its description. */
+export function hasTitleMatch(
+  courses: Array<Pick<RemoteCourse, "subject_id" | "title" | "description">>,
+  query: string,
+) {
+  return courses.some((course) => searchScore(course, query) >= TITLE_MATCH_SCORE);
 }
 
 /** Department codes present in the catalog, with how many subjects each contributes. */
