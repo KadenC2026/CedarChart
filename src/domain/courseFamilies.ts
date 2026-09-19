@@ -1,3 +1,10 @@
+import {
+  compareSubjectIds,
+  enrollmentOf,
+  matchesFilters,
+  searchScore,
+  type CourseFilters,
+} from "./courseSearch";
 import type { RemoteCourse } from "./types";
 
 export type CourseFamily = {
@@ -134,4 +141,39 @@ export function familySearchText(family: CourseFamily) {
     .flatMap((course) => [course.subject_id, course.title, course.description ?? ""])
     .join(" ")
     .toLowerCase();
+}
+
+export function familyScore(family: CourseFamily, query: string) {
+  return family.members.reduce((best, course) => Math.max(best, searchScore(course, query)), 0);
+}
+
+/** A family stays visible when any merged variant satisfies the filters. */
+export function searchFamilies(
+  families: CourseFamily[],
+  options: { query: string; filters: CourseFilters; limit?: number },
+) {
+  const { query, filters, limit } = options;
+  const trimmed = query.trim();
+  const allowed = families.filter((family) =>
+    family.members.some((course) => matchesFilters(course, filters)),
+  );
+
+  const ranked = trimmed
+    ? allowed
+        .map((family) => ({
+          family,
+          score: familyScore(family, trimmed),
+          enrollment: family.members.reduce((best, course) => Math.max(best, enrollmentOf(course)), 0),
+        }))
+        .filter((entry) => entry.score > 0)
+        .sort(
+          (a, b) =>
+            b.score - a.score ||
+            b.enrollment - a.enrollment ||
+            compareSubjectIds(a.family.label, b.family.label),
+        )
+        .map((entry) => entry.family)
+    : [...allowed].sort((a, b) => compareSubjectIds(a.label, b.label));
+
+  return typeof limit === "number" ? ranked.slice(0, limit) : ranked;
 }

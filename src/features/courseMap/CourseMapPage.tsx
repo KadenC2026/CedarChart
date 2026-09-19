@@ -1,4 +1,5 @@
 import { FormEvent, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Background,
   Controls,
@@ -14,9 +15,19 @@ import { useCatalog } from "../../data/catalog";
 import { referencesCourse } from "../../domain/progression";
 import {
   buildCourseFamilies,
-  familySearchText,
+  searchFamilies,
   type CourseFamily,
 } from "../../domain/courseFamilies";
+import {
+  activeFilterCount,
+  departmentOptions,
+  emptyFilters,
+  type CourseFilters,
+} from "../../domain/courseSearch";
+import { localId } from "../../domain/requirements";
+import { plannerTerms, termLabel } from "../../domain/terms";
+import { useApp } from "../../state/AppContext";
+import CourseFilterMenu from "../../components/CourseFilterMenu";
 
 type GraphData = {
   nodes: Node[];
@@ -128,22 +139,27 @@ function buildPrerequisiteGraph(target: CourseFamily, families: CourseFamily[]):
 
 export default function CourseMapPage() {
   const { data, error, retry } = useCatalog();
+  const { state, dispatch } = useApp();
   const catalog = data?.courses ?? [];
   const { families, familyByCourseId } = useMemo(
     () => buildCourseFamilies(catalog),
     [catalog],
   );
   const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState<CourseFilters>(emptyFilters);
   const [targetFamilyId, setTargetFamilyId] = useState<string | null>(null);
   const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null);
+  const [addTerm, setAddTerm] = useState(0);
   const normalized = query.trim().toLowerCase();
 
-  const suggestions = useMemo(() => {
-    if (!normalized || targetFamilyId) return [];
-    return families
-      .filter((family) => familySearchText(family).includes(normalized))
-      .slice(0, 8);
-  }, [families, normalized, targetFamilyId]);
+  const departments = useMemo(() => departmentOptions(catalog), [catalog]);
+
+  const ranked = useMemo(
+    () => searchFamilies(families, { query, filters }),
+    [families, query, filters],
+  );
+  const browsing = Boolean(normalized) || activeFilterCount(filters) > 0;
+  const suggestions = targetFamilyId || !browsing ? [] : ranked.slice(0, 8);
 
   const target = targetFamilyId
     ? families.find((family) => family.id === targetFamilyId)
@@ -158,6 +174,7 @@ export default function CourseMapPage() {
     selectedFamilyId && graph
       ? graph.familyByNodeId.get(selectedFamilyId)
       : undefined;
+  const plannedTerms = selected ? plannedTermsFor(selected) : [];
 
   function chooseFamily(family: CourseFamily) {
     setQuery(family.label);
@@ -169,6 +186,7 @@ export default function CourseMapPage() {
     event.preventDefault();
     if (!families.length) return;
 
+    // A typed subject number always wins, even when the active filters would hide it.
     const exactCourse = catalog.find(
       (course) => course.subject_id.toLowerCase() === normalized,
     );
@@ -176,12 +194,26 @@ export default function CourseMapPage() {
       ? familyByCourseId.get(exactCourse.subject_id)
       : families.find((family) => family.label.toLowerCase() === normalized);
 
-    const fallback = families.find((family) =>
-      familySearchText(family).includes(normalized),
-    );
-
-    const family = exactFamily ?? fallback;
+    const family = exactFamily ?? ranked[0];
     if (family) chooseFamily(family);
+  }
+
+  function addToPlan(family: CourseFamily) {
+    dispatch({
+      type: "ADD_PLANNED_COURSE",
+      course: {
+        courseId: family.primary.subject_id,
+        title: family.primary.title,
+        units: family.primary.total_units,
+        term: addTerm,
+      },
+    });
+  }
+
+  function plannedTermsFor(family: CourseFamily) {
+    return state.plannedCourses
+      .filter((course) => localId(course.courseId) === family.primary.subject_id)
+      .map((course) => termLabel(course.term));
   }
 
   function resetSearch() {
@@ -218,7 +250,15 @@ export default function CourseMapPage() {
               placeholder="Search a class, e.g. 6.1040"
             />
           </form>
+          <CourseFilterMenu
+            filters={filters}
+            onChange={setFilters}
+            departments={departments}
+            resultCount={browsing ? ranked.length : undefined}
+          />
+
           <p>Search any MIT subject to explore its prerequisite map.</p>
+
           {suggestions.length > 0 && (
             <div className="course-map-suggestions">
               {suggestions.map((family) => (
@@ -233,6 +273,10 @@ export default function CourseMapPage() {
                 </button>
               ))}
             </div>
+          )}
+
+          {browsing && !suggestions.length && (
+            <p className="course-map-empty">No subject matches that search with these filters.</p>
           )}
         </div>
       </section>
@@ -326,6 +370,31 @@ export default function CourseMapPage() {
                 versions can still differ in units, offering terms, or exact prerequisite wording.
               </p>
             </div>
+          )}
+
+          <div className="course-map-plan-actions">
+            <label>
+              <span>Add to</span>
+              <select
+                value={addTerm}
+                onChange={(event) => setAddTerm(Number(event.target.value))}
+                aria-label="Term to add this course to"
+              >
+                {plannerTerms.map((term, index) => (
+                  <option value={index} key={term}>{term}</option>
+                ))}
+              </select>
+            </label>
+            <button className="add-course-button" onClick={() => addToPlan(selected)}>
+              + Add to plan
+            </button>
+            <Link to={"/course/" + encodeURIComponent("mit:" + selected.primary.subject_id)}>
+              Open progression →
+            </Link>
+          </div>
+
+          {plannedTerms.length > 0 && (
+            <p className="data-note">Already in your plan: {plannedTerms.join(", ")}</p>
           )}
 
           {selected.primary.url && (

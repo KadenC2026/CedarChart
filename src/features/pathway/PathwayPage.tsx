@@ -3,8 +3,9 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Background, Controls, MarkerType, Position, ReactFlow, type Edge, type Node } from "@xyflow/react";
 import type { RemoteCourse } from "../../domain/types";
 import { useCatalog } from "../../data/catalog";
-import { earnedCourseIds } from "../../domain/requirements";
+import { earnedCourseIds, localId } from "../../domain/requirements";
 import { progressionGroups, referencesCourse } from "../../domain/progression";
+import { plannerTerms, termLabel } from "../../domain/terms";
 import { useApp } from "../../state/AppContext";
 
 function offeringText(course: RemoteCourse) {
@@ -28,7 +29,9 @@ export default function PathwayPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [branchPage, setBranchPage] = useState(0);
   const [showMoreAfter, setShowMoreAfter] = useState(false);
-  useEffect(() => { setExpanded(new Set()); setShowMoreAfter(false); setBranchPage(0); }, [subjectId]);
+  const [pickedCourseId, setPickedCourseId] = useState<string | null>(null);
+  const [addTerm, setAddTerm] = useState(0);
+  useEffect(() => { setExpanded(new Set()); setShowMoreAfter(false); setBranchPage(0); setPickedCourseId(null); }, [subjectId]);
   function toggleGroup(id: string) {
     setExpanded(previous => { const next = new Set(previous); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   }
@@ -96,6 +99,35 @@ export default function PathwayPage() {
   });
   const completed = earnedCourseIds(state).has(target.subject_id);
   const priorCredit = state.priorCredits.find(c => c.courseId === `mit:${target.subject_id}`);
+  const picked = pickedCourseId ? catalog.find(course => course.subject_id === pickedCourseId) : undefined;
+
+  function plannedTermsFor(course: RemoteCourse) {
+    return state.plannedCourses
+      .filter(planned => localId(planned.courseId) === course.subject_id)
+      .map(planned => termLabel(planned.term));
+  }
+
+  function addToPlan(course: RemoteCourse) {
+    dispatch({
+      type: "ADD_PLANNED_COURSE",
+      course: { courseId: course.subject_id, title: course.title, units: course.total_units, term: addTerm },
+    });
+  }
+
+  function termPicker(id: string) {
+    return (
+      <select
+        id={id}
+        value={addTerm}
+        onChange={event => setAddTerm(Number(event.target.value))}
+        aria-label="Term to add this course to"
+      >
+        {plannerTerms.map((term, index) => <option value={index} key={term}>{term}</option>)}
+      </select>
+    );
+  }
+
+  const targetPlannedTerms = plannedTermsFor(target);
 
   return (
     <section className="page progression-page">
@@ -116,6 +148,13 @@ export default function PathwayPage() {
           >
             {priorCredit ? priorCredit.source === "ase" ? "Passed ASE ✓" : "Prior credit ✓" : completed ? "Completed ✓" : "Mark completed"}
           </button>
+          <div className="plan-add-row">
+            {termPicker("pathway-add-term")}
+            <button className="secondary-button" onClick={() => addToPlan(target)}>+ Add to plan</button>
+          </div>
+          {targetPlannedTerms.length > 0 && (
+            <small className="data-note">Planned: {targetPlannedTerms.join(", ")}</small>
+          )}
           <a className="primary-button link-button" href={target.url ?? "https://catalog.mit.edu/"} target="_blank" rel="noreferrer">
             Official catalog ↗
           </a>
@@ -144,7 +183,7 @@ export default function PathwayPage() {
         </div>
       </div>
 
-      <p className="data-note">Click a major to expand its subjects, then click a subject to follow its progression. Branches include subjects in the program’s department and its listed requirements; other subjects are grouped by department. Connections include GIR references and do not imply all prerequisites are satisfied.</p>
+      <p className="data-note">Click a major to expand its subjects, then click a subject to add it to your plan or follow its progression (double-click opens it directly). Branches include subjects in the program’s department and its listed requirements; other subjects are grouped by department. Connections include GIR references and do not imply all prerequisites are satisfied.</p>
       <div className="major-chips">{groups.map(group => <button className="chip" key={group.id} aria-expanded={expanded.has(group.id)} onClick={() => toggleGroup(group.id)}>{group.label} {expanded.has(group.id) ? "−" : "+"}</button>)}</div>
       {groups.length > 6 && <div className="branch-pagination">
         {expanded.size ? <button className="secondary-button" onClick={() => setExpanded(new Set())}>Back to all branches</button> : <>
@@ -164,13 +203,46 @@ export default function PathwayPage() {
           elementsSelectable={false}
           panOnDrag
           zoomOnScroll
-          onNodeClick={(_, node) => { if (node.data.courseId && node.id !== "target") navigate("/course/" + encodeURIComponent("mit:" + node.data.courseId)); }}
+          onNodeClick={(_, node) => {
+            const clicked = typeof node.data.courseId === "string" ? node.data.courseId : null;
+            if (clicked) setPickedCourseId(clicked);
+          }}
+          onNodeDoubleClick={(_, node) => {
+            const clicked = typeof node.data.courseId === "string" ? node.data.courseId : null;
+            if (clicked && node.id !== "target") navigate("/course/" + encodeURIComponent("mit:" + clicked));
+          }}
           minZoom={0.03}
           maxZoom={1.5}
         >
           <Background gap={24} />
           <Controls showInteractive={false} />
         </ReactFlow>
+
+        {picked && (
+          <aside className="graph-action-card">
+            <button className="graph-action-close" aria-label="Dismiss selected course" onClick={() => setPickedCourseId(null)}>×</button>
+            <div className="course-number">{picked.subject_id}</div>
+            <strong>{picked.title}</strong>
+            <span className="data-note">
+              {picked.total_units ? picked.total_units + " units · " : ""}{offeringText(picked)}
+            </span>
+            <div className="plan-add-row">
+              {termPicker("graph-add-term")}
+              <button className="add-course-button" onClick={() => addToPlan(picked)}>+ Add to plan</button>
+            </div>
+            {plannedTermsFor(picked).length > 0 && (
+              <span className="data-note">Already planned: {plannedTermsFor(picked).join(", ")}</span>
+            )}
+            {picked.subject_id !== target.subject_id && (
+              <button
+                className="text-button"
+                onClick={() => navigate("/course/" + encodeURIComponent("mit:" + picked.subject_id))}
+              >
+                Open progression →
+              </button>
+            )}
+          </aside>
+        )}
       </div>
 
       <div className="progression-details">

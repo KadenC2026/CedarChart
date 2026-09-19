@@ -6,11 +6,14 @@ CedarChart helps MIT students discover interesting courses and understand the pr
 
 - Natural-language course discovery
 - AI-backed recommendations with a deterministic keyword fallback
+- Relevance-ranked catalog search: subject numbers beat titles, titles beat description mentions
+- Filter menu for course number, level, offered term, requirement attribute, and units
 - Interactive course graph
 - Course detail panel
 - Cross-feature "Show on map" navigation
 - Recursive prerequisite pathways
 - AND / OR prerequisite groups
+- Add any course to a plan term from the progression chart or the course map
 - Completed-course tracking persisted in localStorage
 - Official MIT catalog source links
 

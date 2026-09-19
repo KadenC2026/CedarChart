@@ -26,6 +26,8 @@ export type Course = {
 export type RemoteCourse = {
   subject_id: string;
   gir_attribute?: string;
+  hass_attribute?: string;
+  communication_requirement?: string;
   equivalent_subjects?: string[];
   title: string;
   description?: string;
@@ -38,8 +40,11 @@ export type RemoteCourse = {
   offered_summer?: boolean;
   level?: "U" | "G";
   rating?: number;
+  enrollment_number?: number;
   in_class_hours?: number;
   out_of_class_hours?: number;
+  is_historical?: boolean;
+  not_offered_year?: string;
   url?: string;
 };
 
