@@ -5,7 +5,6 @@ import { loadCatalog, useCatalog } from "../../data/catalog";
 import {
   departmentOptions,
   emptyFilters,
-  hasTitleMatch,
   matchesFilters,
   searchCourses,
   type CourseFilters,
@@ -84,16 +83,14 @@ export default function DiscoveryPage() {
       const visible = grounded
         .filter((result) => matchesFilters(catalogById.get(localId(result.courseId))!, filters))
         .slice(0, 5);
-      const aiPicks = visible
-        .filter((result) => result.recommendationMethod === "AI")
-        .map((result) => catalogById.get(localId(result.courseId))!);
       const local = keywordResults(catalogData.courses, semanticQuery, filters);
 
-      // The recommend API used to treat every mention equally, so "algorithms" came
-      // back as Course 1. Keep AI only when it actually found a title-level match.
-      if (visible.length && hasTitleMatch(aiPicks, query)) {
+      if (visible.length) {
         dispatch({ type: "SET_RECOMMENDATIONS", results: visible });
-        setMethodNote("Vector semantic search + AI ranking, grounded in the imported MIT catalog.");
+        const keywordOnly = visible.every((result) => result.recommendationMethod === "keyword");
+        setMethodNote(keywordOnly
+          ? "Showing deterministic matches from the imported MIT catalog."
+          : "AI search v2: recommendations grounded in the imported MIT catalog.");
         return;
       }
 
@@ -125,7 +122,9 @@ export default function DiscoveryPage() {
 
   return (
     <section className="page hero-page">
-      <div className="eyebrow">AI course discovery</div>
+      <div className="eyebrow">
+        AI course discovery <span className="release-badge">AI search v2</span>
+      </div>
       <h1>Tell us what interests you. We’ll find where it leads.</h1>
       <p className="lede">
         CedarChart searches the imported MIT catalog, recommends real subjects, and opens a generated
@@ -138,7 +137,7 @@ export default function DiscoveryPage() {
           id="interest"
           value={state.interestQuery}
           onChange={(event) => dispatch({ type: "SET_QUERY", query: event.target.value })}
-          placeholder="I want to build robots that help people."
+          placeholder="Describe an interest — AI search v2 will match it to MIT subjects."
           rows={3}
         />
         <div className="example-row">

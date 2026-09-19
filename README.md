@@ -4,9 +4,8 @@ CedarChart helps MIT students discover interesting courses and understand the pr
 
 ## What works
 
-- Natural-language course discovery
-- Vector semantic course recommendations using OpenAI embeddings
-- Career/interest-aware AI reranking with deterministic fallbacks
+- Natural-language course discovery with AI query expansion and grounded reranking
+- Deterministic keyword fallback when the model API is unavailable
 - Relevance-ranked catalog search: subject numbers beat titles, titles beat description mentions
 - Filter menu for course number, level, offered term, requirement attribute, and units
 - Interactive course graph
@@ -48,7 +47,7 @@ OPENAI_MODEL=gpt-5.6-luna
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 ```
 
-The browser never receives the API key. Course discovery uses vectorized semantic search over grounded catalog candidates, then AI reranks/explains the best matches. Next-course recommendations blend deterministic academic signals with vector similarity. If the API is unavailable, Cedar falls back to deterministic/keyword recommendations.
+The browser never receives the API key. Discovery interprets the student's interests and optional career goal into academic search concepts, retrieves a small candidate set from the checked-in catalog, and asks the model to rank only those candidates. Returned course IDs are validated against that candidate set, and supporting text always comes from the catalog. Logical next-course ranking also uses embeddings when AI is configured. If the API is unavailable, CedarChart falls back to deterministic recommendations.
 
 ## Deploy
 
@@ -57,8 +56,8 @@ Recommended host: Vercel.
 - Framework preset: Vite
 - Build command: `npm run build`
 - Output directory: `dist`
-- Add `OPENAI_API_KEY` in Vercel Environment Variables.
-- Optional: `OPENAI_MODEL` and `OPENAI_EMBEDDING_MODEL` (defaults are already set in code).
+- Add `OPENAI_API_KEY` in Vercel Environment Variables. `OPENAI_MODEL` and `OPENAI_EMBEDDING_MODEL` are optional.
+- Redeploy after adding the environment variable. `vercel.json` bundles the checked-in catalog with the recommendation function.
 
 ## Catalog, requirements, and prior credit
 
