@@ -113,10 +113,10 @@ export function buildCourseFamilies(catalog: RemoteCourse[]) {
     const primary =
       (preferredStem ? members.find((course) => course.subject_id === preferredStem) : undefined) ??
       members[0];
-    const id = preferredStem ?? primary.subject_id;
+    const id = members.length > 1 && preferredStem ? preferredStem : primary.subject_id;
     const family: CourseFamily = {
       id,
-      label: members.length > 1 ? id : primary.subject_id,
+      label: members.length > 1 && preferredStem ? preferredStem : primary.subject_id,
       title: primary.title,
       members,
       primary,
