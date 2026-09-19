@@ -63,7 +63,8 @@ export default function DiscoveryPage() {
 
   async function discover() {
     const query = state.interestQuery.trim();
-    if (!query) return;
+    const semanticQuery = query || careerGoal.trim();
+    if (!semanticQuery) return;
     setLoading(true);
     setMethodNote(null);
 
@@ -86,7 +87,7 @@ export default function DiscoveryPage() {
       const aiPicks = visible
         .filter((result) => result.recommendationMethod === "AI")
         .map((result) => catalogById.get(localId(result.courseId))!);
-      const local = keywordResults(catalogData.courses, query, filters);
+      const local = keywordResults(catalogData.courses, semanticQuery, filters);
 
       // The recommend API used to treat every mention equally, so "algorithms" came
       // back as Course 1. Keep AI only when it actually found a title-level match.
@@ -103,7 +104,7 @@ export default function DiscoveryPage() {
     } catch {
       try {
         const { courses } = await loadCatalog();
-        const matches = keywordResults(courses, query, filters);
+        const matches = keywordResults(courses, semanticQuery, filters);
         dispatch({ type: "SET_RECOMMENDATIONS", results: matches });
         setMethodNote(matches.length
           ? "Showing local keyword matches from the imported MIT catalog."
