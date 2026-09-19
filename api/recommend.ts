@@ -27,7 +27,7 @@ export default async function handler(req: any, res: any) {
 
   try {
     const response = await client.responses.create({
-      model: process.env.OPENAI_MODEL || "gpt-5.6-mini",
+      model: process.env.OPENAI_MODEL || "gpt-5.6-luna",
       input: [
         {
           role: "system",
