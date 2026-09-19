@@ -152,7 +152,6 @@ export default function CourseMapPage() {
   const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null);
   const [scheduleTerm, setScheduleTerm] = useState(0);
   const [nextCourseInterests, setNextCourseInterests] = useState("");
-  const [nextCourseCareerGoal, setNextCourseCareerGoal] = useState("");
   const [nextCourseResults, setNextCourseResults] = useState<Array<NextCourseRecommendation & { explanation?: string; method?: string }>>([]);
   const [nextCourseLoading, setNextCourseLoading] = useState(false);
   const normalized = query.trim().toLowerCase();
@@ -268,7 +267,6 @@ export default function CourseMapPage() {
             description: selected.primary.description,
           },
           interests: nextCourseInterests,
-          careerGoal: nextCourseCareerGoal,
           majorLabel: selectedRequirement ? requirementLabel(selectedRequirement) : "",
           candidates: deterministic.map((item) => ({
             subjectId: item.course.subject_id,
@@ -492,12 +490,7 @@ export default function CourseMapPage() {
             <input
               value={nextCourseInterests}
               onChange={(event) => setNextCourseInterests(event.target.value)}
-              placeholder="Interests: pure math, ML, finance, applied math…"
-            />
-            <input
-              value={nextCourseCareerGoal}
-              onChange={(event) => setNextCourseCareerGoal(event.target.value)}
-              placeholder="Career goal: quant research, ML engineer, academia…"
+              placeholder="Optional: pure math, ML, finance, applied math…"
             />
             <button
               className="secondary-button course-next-find"
