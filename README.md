@@ -14,6 +14,8 @@ CedarChart helps MIT students discover interesting courses and understand the pr
 - Recursive prerequisite pathways
 - AND / OR prerequisite groups
 - Add any course to a plan term from the progression chart or the course map
+- Schedule lab (experimental): rank the classes you want, see which pairs overlap under
+  every section option, and compare up to four conflict-free weekly schedules
 - Completed-course tracking persisted in localStorage
 - Official MIT catalog source links
 

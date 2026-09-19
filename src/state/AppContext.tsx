@@ -1,5 +1,12 @@
 import { createContext, useContext, useEffect, useReducer, type ReactNode } from "react";
-import type { AppState, InterestSearchResult, PlannedCourse, PriorCredit } from "../domain/types";
+import type {
+  AppState,
+  InterestSearchResult,
+  PlannedCourse,
+  PriorCredit,
+  PriorityCourse,
+  PriorityTier,
+} from "../domain/types";
 
 type Action =
   | { type: "SELECT_COURSE"; courseId: string }
@@ -14,6 +21,11 @@ type Action =
   | { type: "SET_REQUIREMENT"; requirementId: string | null }
   | { type: "SET_PRIOR_CREDIT"; credit: PriorCredit }
   | { type: "REMOVE_PRIOR_CREDIT"; courseId: string }
+  | { type: "ADD_PRIORITY_COURSE"; course: PriorityCourse }
+  | { type: "REMOVE_PRIORITY_COURSE"; courseId: string }
+  | { type: "MOVE_PRIORITY_COURSE"; courseId: string; direction: -1 | 1 }
+  | { type: "SET_PRIORITY_TIER"; courseId: string; tier: PriorityTier }
+  | { type: "CLEAR_PRIORITY_COURSES" }
   | { type: "RESET" };
 
 const initialState: AppState = {
@@ -25,6 +37,7 @@ const initialState: AppState = {
   interestQuery: "",
   recommendations: [],
   plannedCourses: [],
+  priorityCourses: [],
   selectedRequirementId: null,
 };
 
@@ -77,6 +90,29 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, priorCredits: [...state.priorCredits.filter(c => c.courseId !== action.credit.courseId), action.credit] };
     case "REMOVE_PRIOR_CREDIT":
       return { ...state, priorCredits: state.priorCredits.filter(c => c.courseId !== action.courseId) };
+    case "ADD_PRIORITY_COURSE": {
+      const exists = state.priorityCourses.some(c => c.courseId === action.course.courseId);
+      return exists ? state : { ...state, priorityCourses: [...state.priorityCourses, action.course] };
+    }
+    case "REMOVE_PRIORITY_COURSE":
+      return { ...state, priorityCourses: state.priorityCourses.filter(c => c.courseId !== action.courseId) };
+    case "MOVE_PRIORITY_COURSE": {
+      const index = state.priorityCourses.findIndex(c => c.courseId === action.courseId);
+      const target = index + action.direction;
+      if (index < 0 || target < 0 || target >= state.priorityCourses.length) return state;
+      const priorityCourses = [...state.priorityCourses];
+      [priorityCourses[index], priorityCourses[target]] = [priorityCourses[target], priorityCourses[index]];
+      return { ...state, priorityCourses };
+    }
+    case "SET_PRIORITY_TIER":
+      return {
+        ...state,
+        priorityCourses: state.priorityCourses.map(c =>
+          c.courseId === action.courseId ? { ...c, tier: action.tier } : c,
+        ),
+      };
+    case "CLEAR_PRIORITY_COURSES":
+      return { ...state, priorityCourses: [] };
     case "RESET":
       return initialState;
   }

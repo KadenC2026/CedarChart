@@ -3,6 +3,7 @@ import DiscoveryPage from "./features/discovery/DiscoveryPage";
 import PlannerPage from "./features/planner/PlannerPage";
 import PathwayPage from "./features/pathway/PathwayPage";
 import CourseMapPage from "./features/courseMap/CourseMapPage";
+import SchedulePage from "./features/schedule/SchedulePage";
 
 export default function App() {
   const location = useLocation();
@@ -17,6 +18,7 @@ export default function App() {
             <NavLink to="/planner">Plan</NavLink>
             <NavLink to="/">Discover</NavLink>
             <NavLink to="/map">Map</NavLink>
+            <NavLink to="/schedule">Schedule</NavLink>
           </nav>
         </header>
       )}
@@ -25,6 +27,7 @@ export default function App() {
           <Route path="/" element={<DiscoveryPage />} />
           <Route path="/planner" element={<PlannerPage />} />
           <Route path="/map" element={<CourseMapPage />} />
+          <Route path="/schedule" element={<SchedulePage />} />
           <Route path="/explore" element={<Navigate to="/planner" replace />} />
           <Route path="/course/:courseId" element={<PathwayPage />} />
         </Routes>

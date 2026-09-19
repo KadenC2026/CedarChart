@@ -34,6 +34,7 @@ export type RemoteCourse = {
   total_units?: number;
   prerequisites?: string;
   corequisites?: string;
+  schedule?: string;
   offered_fall?: boolean;
   offered_IAP?: boolean;
   offered_spring?: boolean;
@@ -53,6 +54,14 @@ export type PlannedCourse = {
   title: string;
   units?: number;
   term: number;
+};
+
+export type PriorityTier = "required" | "preferred";
+
+/** A subject the student wants to take, ranked by position in the list. */
+export type PriorityCourse = {
+  courseId: string;
+  tier: PriorityTier;
 };
 
 export type InterestSearchResult = {
@@ -79,6 +88,7 @@ export type AppState = {
   interestQuery: string;
   recommendations: InterestSearchResult[];
   plannedCourses: PlannedCourse[];
+  priorityCourses: PriorityCourse[];
   selectedRequirementId: string | null;
 };
 
