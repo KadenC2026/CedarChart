@@ -12,11 +12,16 @@ import {
 import type { RemoteCourse } from "../../domain/types";
 import { useCatalog } from "../../data/catalog";
 import { referencesCourse } from "../../domain/progression";
+import {
+  buildCourseFamilies,
+  familySearchText,
+  type CourseFamily,
+} from "../../domain/courseFamilies";
 
 type GraphData = {
   nodes: Node[];
   edges: Edge[];
-  courseByNodeId: Map<string, RemoteCourse>;
+  familyByNodeId: Map<string, CourseFamily>;
 };
 
 function offeringText(course: RemoteCourse) {
@@ -29,68 +34,75 @@ function offeringText(course: RemoteCourse) {
   return terms.length ? terms.join(", ") : "Check catalog";
 }
 
-function buildPrerequisiteGraph(target: RemoteCourse, catalog: RemoteCourse[]): GraphData {
-  const byId = new Map(catalog.map((course) => [course.subject_id, course]));
-  const discovered = new Map<string, { course: RemoteCourse; depth: number }>();
+function familyReferencesFamily(dependent: CourseFamily, prerequisite: CourseFamily) {
+  return dependent.members.some((dependentCourse) =>
+    prerequisite.members.some((prereqCourse) =>
+      referencesCourse(dependentCourse.prerequisites, prereqCourse),
+    ),
+  );
+}
+
+function buildPrerequisiteGraph(target: CourseFamily, families: CourseFamily[]): GraphData {
+  const discovered = new Map<string, { family: CourseFamily; depth: number }>();
   const edgeKeys = new Set<string>();
   const edges: Edge[] = [];
-  const queue: Array<{ course: RemoteCourse; depth: number }> = [{ course: target, depth: 0 }];
-  discovered.set(target.subject_id, { course: target, depth: 0 });
+  const queue: Array<{ family: CourseFamily; depth: number }> = [{ family: target, depth: 0 }];
+  discovered.set(target.id, { family: target, depth: 0 });
 
   let cursor = 0;
   const maxNodes = 70;
+
   while (cursor < queue.length && discovered.size < maxNodes) {
     const current = queue[cursor++];
-    if (!current.course.prerequisites) continue;
-
-    const prereqs = catalog.filter(
+    const prereqs = families.filter(
       (candidate) =>
-        candidate.subject_id !== current.course.subject_id &&
-        referencesCourse(current.course.prerequisites, candidate),
+        candidate.id !== current.family.id &&
+        familyReferencesFamily(current.family, candidate),
     );
 
     for (const prereq of prereqs) {
       if (discovered.size >= maxNodes) break;
       const nextDepth = current.depth + 1;
-      const previous = discovered.get(prereq.subject_id);
+      const previous = discovered.get(prereq.id);
       if (!previous || nextDepth > previous.depth) {
-        discovered.set(prereq.subject_id, { course: prereq, depth: nextDepth });
+        discovered.set(prereq.id, { family: prereq, depth: nextDepth });
       }
 
-      const edgeKey = prereq.subject_id + "->" + current.course.subject_id;
+      const edgeKey = prereq.id + "->" + current.family.id;
       if (!edgeKeys.has(edgeKey)) {
         edgeKeys.add(edgeKey);
         edges.push({
           id: edgeKey,
-          source: prereq.subject_id,
-          target: current.course.subject_id,
+          source: prereq.id,
+          target: current.family.id,
           markerEnd: { type: MarkerType.ArrowClosed },
         });
       }
 
-      if (!previous) queue.push({ course: prereq, depth: nextDepth });
+      if (!previous) queue.push({ family: prereq, depth: nextDepth });
     }
   }
 
-  const layers = new Map<number, RemoteCourse[]>();
-  for (const { course, depth } of discovered.values()) {
-    layers.set(depth, [...(layers.get(depth) ?? []), course]);
+  const layers = new Map<number, CourseFamily[]>();
+  for (const { family, depth } of discovered.values()) {
+    layers.set(depth, [...(layers.get(depth) ?? []), family]);
   }
 
   const nodes: Node[] = [];
-  const courseByNodeId = new Map<string, RemoteCourse>();
-  const horizontalGap = 290;
-  const verticalGap = 118;
+  const familyByNodeId = new Map<string, CourseFamily>();
+  const horizontalGap = 300;
+  const verticalGap = 122;
 
-  for (const [depth, courses] of [...layers.entries()].sort((a, b) => b[0] - a[0])) {
-    courses.sort((a, b) => a.subject_id.localeCompare(b.subject_id, undefined, { numeric: true }));
-    const totalHeight = Math.max(0, (courses.length - 1) * verticalGap);
-    courses.forEach((course, index) => {
+  for (const [depth, layerFamilies] of [...layers.entries()].sort((a, b) => b[0] - a[0])) {
+    layerFamilies.sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
+    const totalHeight = Math.max(0, (layerFamilies.length - 1) * verticalGap);
+
+    layerFamilies.forEach((family, index) => {
       const y = index * verticalGap - totalHeight / 2;
       const x = -depth * horizontalGap;
-      const isTarget = course.subject_id === target.subject_id;
+      const isTarget = family.id === target.id;
       nodes.push({
-        id: course.subject_id,
+        id: family.id,
         position: { x, y },
         sourcePosition: Position.Right,
         targetPosition: Position.Left,
@@ -98,69 +110,83 @@ function buildPrerequisiteGraph(target: RemoteCourse, catalog: RemoteCourse[]): 
         data: {
           label: (
             <div className="course-map-node-content">
-              <strong>{course.subject_id}</strong>
-              <span>{course.title}</span>
+              <strong>{family.label}</strong>
+              <span>{family.title}</span>
+              {family.members.length > 1 && (
+                <small>{family.members.length} variants merged</small>
+              )}
             </div>
           ),
         },
       });
-      courseByNodeId.set(course.subject_id, byId.get(course.subject_id) ?? course);
+      familyByNodeId.set(family.id, family);
     });
   }
 
-  return { nodes, edges, courseByNodeId };
+  return { nodes, edges, familyByNodeId };
 }
 
 export default function CourseMapPage() {
   const { data, error, retry } = useCatalog();
   const catalog = data?.courses ?? [];
+  const { families, familyByCourseId } = useMemo(
+    () => buildCourseFamilies(catalog),
+    [catalog],
+  );
   const [query, setQuery] = useState("");
-  const [targetId, setTargetId] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [targetFamilyId, setTargetFamilyId] = useState<string | null>(null);
+  const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null);
   const normalized = query.trim().toLowerCase();
 
   const suggestions = useMemo(() => {
-    if (!normalized || targetId) return [];
-    return catalog
-      .filter(
-        (course) =>
-          course.subject_id.toLowerCase().includes(normalized) ||
-          course.title.toLowerCase().includes(normalized),
-      )
+    if (!normalized || targetFamilyId) return [];
+    return families
+      .filter((family) => familySearchText(family).includes(normalized))
       .slice(0, 8);
-  }, [catalog, normalized, targetId]);
+  }, [families, normalized, targetFamilyId]);
 
-  const target = targetId ? catalog.find((course) => course.subject_id === targetId) : undefined;
+  const target = targetFamilyId
+    ? families.find((family) => family.id === targetFamilyId)
+    : undefined;
+
   const graph = useMemo(
-    () => (target ? buildPrerequisiteGraph(target, catalog) : null),
-    [target, catalog],
+    () => (target ? buildPrerequisiteGraph(target, families) : null),
+    [target, families],
   );
-  const selected = selectedId && graph ? graph.courseByNodeId.get(selectedId) : undefined;
 
-  function chooseCourse(course: RemoteCourse) {
-    setQuery(course.subject_id);
-    setTargetId(course.subject_id);
-    setSelectedId(course.subject_id);
+  const selected =
+    selectedFamilyId && graph
+      ? graph.familyByNodeId.get(selectedFamilyId)
+      : undefined;
+
+  function chooseFamily(family: CourseFamily) {
+    setQuery(family.label);
+    setTargetFamilyId(family.id);
+    setSelectedFamilyId(family.id);
   }
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (!catalog.length) return;
-    const exact = catalog.find(
+    if (!families.length) return;
+
+    const exactCourse = catalog.find(
       (course) => course.subject_id.toLowerCase() === normalized,
     );
-    const fallback = catalog.find(
-      (course) =>
-        course.subject_id.toLowerCase().includes(normalized) ||
-        course.title.toLowerCase().includes(normalized),
+    const exactFamily = exactCourse
+      ? familyByCourseId.get(exactCourse.subject_id)
+      : families.find((family) => family.label.toLowerCase() === normalized);
+
+    const fallback = families.find((family) =>
+      familySearchText(family).includes(normalized),
     );
-    const course = exact ?? fallback;
-    if (course) chooseCourse(course);
+
+    const family = exactFamily ?? fallback;
+    if (family) chooseFamily(family);
   }
 
   function resetSearch() {
-    setTargetId(null);
-    setSelectedId(null);
+    setTargetFamilyId(null);
+    setSelectedFamilyId(null);
     setQuery("");
   }
 
@@ -195,10 +221,15 @@ export default function CourseMapPage() {
           <p>Search any MIT subject to explore its prerequisite map.</p>
           {suggestions.length > 0 && (
             <div className="course-map-suggestions">
-              {suggestions.map((course) => (
-                <button key={course.subject_id} onClick={() => chooseCourse(course)}>
-                  <strong>{course.subject_id}</strong>
-                  <span>{course.title}</span>
+              {suggestions.map((family) => (
+                <button key={family.id} onClick={() => chooseFamily(family)}>
+                  <strong>{family.label}</strong>
+                  <span>
+                    {family.title}
+                    {family.members.length > 1
+                      ? " · " + family.members.map((course) => course.subject_id).join(", ")
+                      : ""}
+                  </span>
                 </button>
               ))}
             </div>
@@ -217,7 +248,7 @@ export default function CourseMapPage() {
             aria-label="Search another MIT course"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            onFocus={() => setTargetId(null)}
+            onFocus={() => setTargetFamilyId(null)}
             placeholder="Search a class"
           />
           <button type="submit" aria-label="Search">⌕</button>
@@ -226,7 +257,7 @@ export default function CourseMapPage() {
 
       <div className="course-map-canvas">
         <ReactFlow
-          key={target.subject_id}
+          key={target.id}
           nodes={graph.nodes}
           edges={graph.edges}
           fitView
@@ -239,7 +270,7 @@ export default function CourseMapPage() {
           zoomOnPinch
           minZoom={0.08}
           maxZoom={2.2}
-          onNodeClick={(_, node) => setSelectedId(node.id)}
+          onNodeClick={(_, node) => setSelectedFamilyId(node.id)}
         >
           <Background gap={28} />
           <Controls showInteractive={false} />
@@ -249,33 +280,65 @@ export default function CourseMapPage() {
 
       {selected && (
         <aside className="course-map-info-card">
-          <button className="course-map-close" onClick={() => setSelectedId(null)} aria-label="Close details">×</button>
-          <div className="course-map-info-number">{selected.subject_id}</div>
+          <button className="course-map-close" onClick={() => setSelectedFamilyId(null)} aria-label="Close details">×</button>
+          <div className="course-map-info-number">{selected.label}</div>
           <h2>{selected.title}</h2>
-          <p>{selected.description || "No description available."}</p>
-          <div className="course-map-info-grid">
-            <div><span>Units</span><strong>{selected.total_units ?? "—"}</strong></div>
-            <div><span>Offered</span><strong>{offeringText(selected)}</strong></div>
-            <div><span>In class</span><strong>{selected.in_class_hours != null ? selected.in_class_hours + " hrs/wk" : "—"}</strong></div>
-            <div><span>Outside class</span><strong>{selected.out_of_class_hours != null ? selected.out_of_class_hours + " hrs/wk" : "—"}</strong></div>
-          </div>
-          <div className="course-map-rule">
-            <span>Prerequisites</span>
-            <p>{selected.prerequisites || "No listed prerequisites."}</p>
-          </div>
-          {selected.corequisites && (
-            <div className="course-map-rule">
-              <span>Corequisites</span>
-              <p>{selected.corequisites}</p>
+
+          {selected.members.length > 1 && (
+            <div className="course-family-variants">
+              <span>Combined variants</span>
+              <div>
+                {selected.members.map((course) => (
+                  <span className="course-family-chip" key={course.subject_id}>
+                    {course.subject_id}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
-          {selected.url && <a href={selected.url} target="_blank" rel="noreferrer">Open official catalog ↗</a>}
+
+          <p>{selected.primary.description || "No description available."}</p>
+
+          <div className="course-map-info-grid">
+            <div><span>Units</span><strong>{selected.primary.total_units ?? "—"}</strong></div>
+            <div><span>Offered</span><strong>{offeringText(selected.primary)}</strong></div>
+            <div><span>In class</span><strong>{selected.primary.in_class_hours != null ? selected.primary.in_class_hours + " hrs/wk" : "—"}</strong></div>
+            <div><span>Outside class</span><strong>{selected.primary.out_of_class_hours != null ? selected.primary.out_of_class_hours + " hrs/wk" : "—"}</strong></div>
+          </div>
+
+          <div className="course-map-rule">
+            <span>Prerequisites</span>
+            <p>{selected.primary.prerequisites || "No listed prerequisites."}</p>
+          </div>
+
+          {selected.primary.corequisites && (
+            <div className="course-map-rule">
+              <span>Corequisites</span>
+              <p>{selected.primary.corequisites}</p>
+            </div>
+          )}
+
+          {selected.members.length > 1 && (
+            <div className="course-map-rule">
+              <span>Variant note</span>
+              <p>
+                Cedar displays these as one course family in the map. Individual catalog
+                versions can still differ in units, offering terms, or exact prerequisite wording.
+              </p>
+            </div>
+          )}
+
+          {selected.primary.url && (
+            <a href={selected.primary.url} target="_blank" rel="noreferrer">
+              Open official catalog ↗
+            </a>
+          )}
         </aside>
       )}
 
       <div className="course-map-legend">
-        <strong>{target.subject_id}</strong>
-        <span>{graph.nodes.length} courses in prerequisite map</span>
+        <strong>{target.label}</strong>
+        <span>{graph.nodes.length} course families in prerequisite map</span>
       </div>
     </section>
   );
