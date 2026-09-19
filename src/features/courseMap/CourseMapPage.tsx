@@ -1,4 +1,5 @@
 import { FormEvent, useMemo, useState } from "react";
+import { NavLink } from "react-router-dom";
 import {
   Background,
   Controls,
@@ -12,11 +13,19 @@ import {
 import type { RemoteCourse } from "../../domain/types";
 import { useCatalog } from "../../data/catalog";
 import { referencesCourse } from "../../domain/progression";
+import { useApp } from "../../state/AppContext";
 import {
   buildCourseFamilies,
   familySearchText,
   type CourseFamily,
 } from "../../domain/courseFamilies";
+
+const plannerTerms = [
+  "Year 1 · Fall", "Year 1 · IAP", "Year 1 · Spring",
+  "Year 2 · Fall", "Year 2 · IAP", "Year 2 · Spring",
+  "Year 3 · Fall", "Year 3 · IAP", "Year 3 · Spring",
+  "Year 4 · Fall", "Year 4 · IAP", "Year 4 · Spring",
+];
 
 type GraphData = {
   nodes: Node[];
@@ -128,6 +137,7 @@ function buildPrerequisiteGraph(target: CourseFamily, families: CourseFamily[]):
 
 export default function CourseMapPage() {
   const { data, error, retry } = useCatalog();
+  const { state, dispatch } = useApp();
   const catalog = data?.courses ?? [];
   const { families, familyByCourseId } = useMemo(
     () => buildCourseFamilies(catalog),
@@ -136,6 +146,7 @@ export default function CourseMapPage() {
   const [query, setQuery] = useState("");
   const [targetFamilyId, setTargetFamilyId] = useState<string | null>(null);
   const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null);
+  const [scheduleTerm, setScheduleTerm] = useState(0);
   const normalized = query.trim().toLowerCase();
 
   const suggestions = useMemo(() => {
@@ -190,6 +201,29 @@ export default function CourseMapPage() {
     setQuery("");
   }
 
+  function addSelectedToSchedule() {
+    if (!selected) return;
+    const course = selected.primary;
+    dispatch({
+      type: "ADD_PLANNED_COURSE",
+      course: {
+        courseId: course.subject_id,
+        title: course.title,
+        units: course.total_units,
+        term: scheduleTerm,
+      },
+    });
+  }
+
+  function isSelectedScheduled() {
+    if (!selected) return false;
+    return state.plannedCourses.some(
+      (course) =>
+        selected.members.some((member) => member.subject_id === course.courseId) &&
+        course.term === scheduleTerm,
+    );
+  }
+
   if (error) {
     return (
       <section className="course-map-loading">
@@ -206,6 +240,11 @@ export default function CourseMapPage() {
   if (!target || !graph) {
     return (
       <section className="course-map-home">
+        <nav className="course-map-index-nav" aria-label="Cedar pages">
+          <NavLink to="/planner">Plan</NavLink>
+          <NavLink to="/">Discover</NavLink>
+          <NavLink to="/map">Map</NavLink>
+        </nav>
         <div className="course-map-home-inner">
           <div className="course-map-wordmark">cedar</div>
           <form className="course-map-search-home" onSubmit={submit}>
@@ -241,6 +280,11 @@ export default function CourseMapPage() {
 
   return (
     <section className="course-map-shell">
+      <nav className="course-map-index-nav" aria-label="Cedar pages">
+          <NavLink to="/planner">Plan</NavLink>
+          <NavLink to="/">Discover</NavLink>
+          <NavLink to="/map">Map</NavLink>
+        </nav>
       <div className="course-map-floating-search">
         <button className="course-map-mini-brand" onClick={resetSearch}>cedar</button>
         <form onSubmit={submit}>
@@ -304,6 +348,28 @@ export default function CourseMapPage() {
             <div><span>Offered</span><strong>{offeringText(selected.primary)}</strong></div>
             <div><span>In class</span><strong>{selected.primary.in_class_hours != null ? selected.primary.in_class_hours + " hrs/wk" : "—"}</strong></div>
             <div><span>Outside class</span><strong>{selected.primary.out_of_class_hours != null ? selected.primary.out_of_class_hours + " hrs/wk" : "—"}</strong></div>
+          </div>
+
+          <div className="course-map-schedule">
+            <label htmlFor="course-map-term">Add to schedule</label>
+            <div>
+              <select
+                id="course-map-term"
+                value={scheduleTerm}
+                onChange={(event) => setScheduleTerm(Number(event.target.value))}
+              >
+                {plannerTerms.map((term, index) => (
+                  <option value={index} key={term}>{term}</option>
+                ))}
+              </select>
+              <button
+                className="primary-button"
+                onClick={addSelectedToSchedule}
+                disabled={isSelectedScheduled()}
+              >
+                {isSelectedScheduled() ? "Added ✓" : "+ Add"}
+              </button>
+            </div>
           </div>
 
           <div className="course-map-rule">
