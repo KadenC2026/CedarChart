@@ -33,7 +33,7 @@ export default function PlannerPage() {
     ])
       .then(([courses, reqs]) => {
         setCatalog(Array.isArray(courses) ? courses : []);
-        setRequirements(reqs && typeof reqs === "object" ? reqs : {});
+        setRequirements(reqs && typeof reqs === "object" ? reqs as Record<string, RequirementMeta> : {});
       })
       .catch(() => setCatalogError("The MIT catalog could not be loaded."))
       .finally(() => setLoadingCatalog(false));
