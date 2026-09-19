@@ -1251,3 +1251,21 @@ button:disabled { cursor: default; opacity: .65; }
   font-size: 11px;
   padding-top: 7px;
 }
+
+
+.career-goal-field {
+  margin: 14px 0;
+}
+.career-goal-field label {
+  display: block;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+.career-goal-field label span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.course-next-panel > input + input {
+  margin-top: 7px;
+}

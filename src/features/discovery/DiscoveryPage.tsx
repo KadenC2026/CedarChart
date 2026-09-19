@@ -41,6 +41,7 @@ export default function DiscoveryPage() {
   const { data } = useCatalog();
   const [loading, setLoading] = useState(false);
   const [methodNote, setMethodNote] = useState<string | null>(null);
+  const [careerGoal, setCareerGoal] = useState("");
   const [filters, setFilters] = useState<CourseFilters>(emptyFilters);
 
   const catalog = data?.courses ?? [];
@@ -62,7 +63,8 @@ export default function DiscoveryPage() {
 
   async function discover() {
     const query = state.interestQuery.trim();
-    if (!query) return;
+    const semanticQuery = query || careerGoal.trim();
+    if (!semanticQuery) return;
     setLoading(true);
     setMethodNote(null);
 
@@ -72,7 +74,7 @@ export default function DiscoveryPage() {
       const response = await fetch("/api/recommend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query, careerGoal }),
       });
       if (!response.ok) throw new Error("recommendation endpoint unavailable");
       const data = await response.json();
@@ -85,13 +87,13 @@ export default function DiscoveryPage() {
       const aiPicks = visible
         .filter((result) => result.recommendationMethod === "AI")
         .map((result) => catalogById.get(localId(result.courseId))!);
-      const local = keywordResults(catalogData.courses, query, filters);
+      const local = keywordResults(catalogData.courses, semanticQuery, filters);
 
       // The recommend API used to treat every mention equally, so "algorithms" came
       // back as Course 1. Keep AI only when it actually found a title-level match.
       if (visible.length && hasTitleMatch(aiPicks, query)) {
         dispatch({ type: "SET_RECOMMENDATIONS", results: visible });
-        setMethodNote("AI-assisted recommendations grounded in the imported MIT catalog.");
+        setMethodNote("Vector semantic search + AI ranking, grounded in the imported MIT catalog.");
         return;
       }
 
@@ -102,7 +104,7 @@ export default function DiscoveryPage() {
     } catch {
       try {
         const { courses } = await loadCatalog();
-        const matches = keywordResults(courses, query, filters);
+        const matches = keywordResults(courses, semanticQuery, filters);
         dispatch({ type: "SET_RECOMMENDATIONS", results: matches });
         setMethodNote(matches.length
           ? "Showing local keyword matches from the imported MIT catalog."
@@ -147,9 +149,23 @@ export default function DiscoveryPage() {
           ))}
         </div>
 
+        <div className="career-goal-field">
+          <label htmlFor="career-goal">Career goal <span>(optional)</span></label>
+          <input
+            id="career-goal"
+            value={careerGoal}
+            onChange={(event) => setCareerGoal(event.target.value)}
+            placeholder="e.g. quantitative researcher, ML engineer, theoretical CS"
+          />
+        </div>
+
         <CourseFilterMenu filters={filters} onChange={setFilters} departments={departments} />
 
-        <button className="primary-button" onClick={discover} disabled={loading || !state.interestQuery.trim()}>
+        <button
+          className="primary-button"
+          onClick={discover}
+          disabled={loading || (!state.interestQuery.trim() && !careerGoal.trim())}
+        >
           {loading ? "Finding courses…" : "Discover courses"}
         </button>
       </div>
