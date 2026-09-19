@@ -14,6 +14,8 @@ import type { RemoteCourse } from "../../domain/types";
 import { useCatalog } from "../../data/catalog";
 import { referencesCourse } from "../../domain/progression";
 import { useApp } from "../../state/AppContext";
+import { recommendNextCourses, type NextCourseRecommendation } from "../../domain/nextCourses";
+import { requirementLabel } from "../../domain/requirements";
 import {
   buildCourseFamilies,
   familySearchText,
@@ -147,6 +149,9 @@ export default function CourseMapPage() {
   const [targetFamilyId, setTargetFamilyId] = useState<string | null>(null);
   const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null);
   const [scheduleTerm, setScheduleTerm] = useState(0);
+  const [nextCourseInterests, setNextCourseInterests] = useState("");
+  const [nextCourseResults, setNextCourseResults] = useState<Array<NextCourseRecommendation & { explanation?: string; method?: string }>>([]);
+  const [nextCourseLoading, setNextCourseLoading] = useState(false);
   const normalized = query.trim().toLowerCase();
 
   const suggestions = useMemo(() => {
@@ -174,6 +179,7 @@ export default function CourseMapPage() {
     setQuery(family.label);
     setTargetFamilyId(family.id);
     setSelectedFamilyId(family.id);
+    setNextCourseResults([]);
   }
 
   function submit(event: FormEvent) {
@@ -199,6 +205,7 @@ export default function CourseMapPage() {
     setTargetFamilyId(null);
     setSelectedFamilyId(null);
     setQuery("");
+    setNextCourseResults([]);
   }
 
   function addSelectedToSchedule() {
@@ -222,6 +229,84 @@ export default function CourseMapPage() {
         selected.members.some((member) => member.subject_id === course.courseId) &&
         course.term === scheduleTerm,
     );
+  }
+
+  async function findLogicalNextCourses() {
+    if (!selected || !data) return;
+    setNextCourseLoading(true);
+
+    const deterministic = recommendNextCourses({
+      current: selected.primary,
+      catalog,
+      requirements: data.requirements,
+      state,
+      interests: nextCourseInterests,
+      limit: 15,
+    });
+
+    const selectedRequirement = state.selectedRequirementId
+      ? data.requirements[state.selectedRequirementId]
+      : undefined;
+
+    try {
+      const response = await fetch("/api/next-courses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentCourse: {
+            subjectId: selected.primary.subject_id,
+            title: selected.primary.title,
+            description: selected.primary.description,
+          },
+          interests: nextCourseInterests,
+          majorLabel: selectedRequirement ? requirementLabel(selectedRequirement) : "",
+          candidates: deterministic.map((item) => ({
+            subjectId: item.course.subject_id,
+            title: item.course.title,
+            description: item.course.description,
+            relationship: item.relationship,
+            deterministicScore: item.score,
+            deterministicReasons: item.reasons,
+          })),
+        }),
+      });
+
+      if (!response.ok) throw new Error("AI ranking unavailable");
+      const payload = await response.json();
+      const rankedIds = Array.isArray(payload.results) ? payload.results : [];
+      const byId = new Map(deterministic.map((item) => [item.course.subject_id, item]));
+
+      const ranked = rankedIds
+        .map((item: { subjectId: string; explanation?: string; method?: string }) => {
+          const base = byId.get(item.subjectId);
+          return base ? { ...base, explanation: item.explanation, method: item.method } : null;
+        })
+        .filter(Boolean) as Array<NextCourseRecommendation & { explanation?: string; method?: string }>;
+
+      const seen = new Set(ranked.map((item) => item.course.subject_id));
+      setNextCourseResults([
+        ...ranked,
+        ...deterministic
+          .filter((item) => !seen.has(item.course.subject_id))
+          .slice(0, Math.max(0, 8 - ranked.length)),
+      ]);
+    } catch {
+      setNextCourseResults(deterministic.slice(0, 8));
+    } finally {
+      setNextCourseLoading(false);
+    }
+  }
+
+  function addRecommendationToSchedule(course: RemoteCourse) {
+    dispatch({
+      type: "ADD_PLANNED_COURSE",
+      course: {
+        courseId: course.subject_id,
+        title: course.title,
+        units: course.total_units,
+        term: scheduleTerm,
+      },
+    });
   }
 
   if (error) {
@@ -370,6 +455,72 @@ export default function CourseMapPage() {
                 {isSelectedScheduled() ? "Added ✓" : "+ Add"}
               </button>
             </div>
+          </div>
+
+
+          <div className="course-next-panel">
+            <div className="course-next-heading">
+              <div>
+                <span>Where can I go from here?</span>
+                <small>Recommendations are not prerequisite requirements.</small>
+              </div>
+            </div>
+            <input
+              value={nextCourseInterests}
+              onChange={(event) => setNextCourseInterests(event.target.value)}
+              placeholder="Optional: pure math, ML, finance, applied math…"
+            />
+            <button
+              className="secondary-button course-next-find"
+              onClick={findLogicalNextCourses}
+              disabled={nextCourseLoading}
+            >
+              {nextCourseLoading ? "Finding logical next courses…" : "Recommend next courses"}
+            </button>
+
+            {nextCourseResults.length > 0 && (
+              <div className="course-next-results">
+                {nextCourseResults.map((recommendation) => {
+                  const alreadyPlanned = state.plannedCourses.some(
+                    (planned) => planned.courseId === recommendation.course.subject_id && planned.term === scheduleTerm,
+                  );
+                  return (
+                    <article className="course-next-card" key={recommendation.course.subject_id}>
+                      <div className="course-next-card-top">
+                        <div>
+                          <strong>{recommendation.course.subject_id}</strong>
+                          <span>{recommendation.course.title}</span>
+                        </div>
+                        <span className={"course-next-badge " + recommendation.relationship}>
+                          {recommendation.relationship === "required-next"
+                            ? "Builds directly"
+                            : recommendation.relationship === "recommended-next"
+                              ? "Recommended next"
+                              : "Related direction"}
+                        </span>
+                      </div>
+                      <p>
+                        {recommendation.explanation ??
+                          recommendation.reasons[0] ??
+                          "Logical continuation based on your current course and academic plan."}
+                      </p>
+                      {recommendation.reasons.length > 1 && (
+                        <ul>
+                          {recommendation.reasons.slice(1, 3).map((reason) => <li key={reason}>{reason}</li>)}
+                        </ul>
+                      )}
+                      <button
+                        className="text-button"
+                        disabled={alreadyPlanned}
+                        onClick={() => addRecommendationToSchedule(recommendation.course)}
+                      >
+                        {alreadyPlanned ? "Added to selected term ✓" : "+ Add to selected term"}
+                      </button>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="course-map-rule">
