@@ -426,3 +426,301 @@ button:disabled { cursor: default; opacity: .65; }
   }
   .planner-right-pane { display: block; }
 }
+
+
+/* Google/Maps-inspired prerequisite explorer */
+.course-map-app-shell,
+.course-map-app-shell main {
+  height: 100vh;
+  min-height: 100vh;
+}
+.course-map-home {
+  height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  padding: 24px;
+}
+.course-map-home-inner {
+  width: min(680px, 92vw);
+  text-align: center;
+  position: relative;
+}
+.course-map-wordmark {
+  font-size: clamp(58px, 9vw, 92px);
+  line-height: 1;
+  font-weight: 750;
+  letter-spacing: -.07em;
+  color: var(--green);
+  margin-bottom: 28px;
+}
+.course-map-search-home {
+  height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #d8d8d8;
+  border-radius: 999px;
+  padding: 0 20px;
+  background: #fff;
+  box-shadow: 0 1px 6px rgba(32,33,36,.18);
+}
+.course-map-search-home:focus-within {
+  box-shadow: 0 2px 10px rgba(32,33,36,.22);
+}
+.course-map-search-home input {
+  flex: 1;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  font-size: 18px;
+}
+.course-map-search-home input:focus {
+  border: 0;
+  box-shadow: none;
+}
+.course-map-search-icon {
+  color: #666;
+  font-size: 24px;
+}
+.course-map-home-inner > p {
+  color: var(--muted);
+  margin-top: 18px;
+}
+.course-map-suggestions {
+  margin-top: 10px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,.08);
+  text-align: left;
+}
+.course-map-suggestions button {
+  width: 100%;
+  border: 0;
+  background: #fff;
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 12px;
+  padding: 12px 16px;
+  text-align: left;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+.course-map-suggestions button:last-child { border-bottom: 0; }
+.course-map-suggestions button:hover { background: #f7f7f7; }
+.course-map-suggestions span {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-map-shell {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: #eef0eb;
+  overflow: hidden;
+}
+.course-map-canvas {
+  position: absolute;
+  inset: 0;
+}
+.course-map-floating-search {
+  position: absolute;
+  z-index: 20;
+  top: 18px;
+  left: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.course-map-mini-brand {
+  border: 0;
+  background: #fff;
+  color: var(--green);
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-weight: 800;
+  font-size: 20px;
+  box-shadow: 0 1px 6px rgba(32,33,36,.2);
+  cursor: pointer;
+}
+.course-map-floating-search form {
+  width: min(430px, calc(100vw - 120px));
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 6px rgba(32,33,36,.24);
+  overflow: hidden;
+}
+.course-map-floating-search input {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 13px 14px;
+  font-size: 15px;
+}
+.course-map-floating-search input:focus {
+  border: 0;
+  box-shadow: none;
+}
+.course-map-floating-search form button {
+  border: 0;
+  background: #fff;
+  padding: 11px 14px;
+  cursor: pointer;
+  font-size: 20px;
+}
+.course-map-node {
+  width: 210px !important;
+  border-radius: 16px !important;
+  border: 1px solid #b8b8b8 !important;
+  background: rgba(255,255,255,.96) !important;
+  padding: 11px 13px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  cursor: pointer;
+}
+.course-map-node:hover {
+  box-shadow: 0 5px 18px rgba(0,0,0,.14);
+}
+.course-map-target {
+  border: 2px solid var(--green) !important;
+  background: #e8f1e8 !important;
+  box-shadow: 0 8px 24px rgba(36,84,58,.2) !important;
+}
+.course-map-node-content {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+.course-map-node-content strong {
+  color: var(--green);
+  font-size: 15px;
+}
+.course-map-node-content span {
+  font-size: 12px;
+  color: #545454;
+  line-height: 1.25;
+}
+.course-map-info-card {
+  position: absolute;
+  z-index: 20;
+  top: 86px;
+  left: 18px;
+  width: min(380px, calc(100vw - 36px));
+  max-height: calc(100vh - 112px);
+  overflow-y: auto;
+  background: rgba(255,255,255,.97);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 4px 18px rgba(0,0,0,.22);
+}
+.course-map-close {
+  position: absolute;
+  right: 12px;
+  top: 10px;
+  border: 0;
+  background: transparent;
+  font-size: 26px;
+  cursor: pointer;
+  color: #666;
+}
+.course-map-info-number {
+  color: var(--green);
+  font-size: 15px;
+  font-weight: 850;
+}
+.course-map-info-card h2 {
+  margin: 5px 28px 10px 0;
+  font-size: 24px;
+}
+.course-map-info-card > p {
+  color: #555;
+  line-height: 1.5;
+  font-size: 14px;
+}
+.course-map-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 16px 0;
+}
+.course-map-info-grid > div {
+  background: #f4f5f1;
+  border-radius: 10px;
+  padding: 10px;
+  display: grid;
+  gap: 3px;
+}
+.course-map-info-grid span,
+.course-map-rule > span {
+  color: #777;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.course-map-info-grid strong { font-size: 13px; }
+.course-map-rule {
+  border-top: 1px solid #eee;
+  padding-top: 12px;
+  margin-top: 12px;
+}
+.course-map-rule p {
+  margin: 6px 0 0;
+  line-height: 1.45;
+  font-size: 13px;
+}
+.course-map-info-card > a {
+  display: inline-block;
+  margin-top: 14px;
+  color: var(--green);
+  font-weight: 700;
+}
+.course-map-legend {
+  position: absolute;
+  z-index: 15;
+  bottom: 18px;
+  left: 18px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255,255,255,.92);
+  border-radius: 10px;
+  padding: 9px 12px;
+  box-shadow: 0 1px 6px rgba(0,0,0,.15);
+  font-size: 12px;
+}
+.course-map-legend span { color: var(--muted); }
+.course-map-loading {
+  height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #fff;
+}
+.course-map-shell .react-flow__controls,
+.course-map-shell .react-flow__minimap {
+  box-shadow: 0 1px 6px rgba(0,0,0,.18);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+@media (max-width: 680px) {
+  .course-map-floating-search {
+    right: 12px;
+    left: 12px;
+  }
+  .course-map-mini-brand { display: none; }
+  .course-map-floating-search form { width: 100%; }
+  .course-map-info-card {
+    left: 12px;
+    right: 12px;
+    width: auto;
+    top: auto;
+    bottom: 12px;
+    max-height: 45vh;
+  }
+  .course-map-legend { display: none; }
+}
