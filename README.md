@@ -4,8 +4,8 @@ CedarChart helps MIT students discover interesting courses and understand the pr
 
 ## What works
 
-- Natural-language course discovery
-- AI-backed recommendations with a deterministic keyword fallback
+- Natural-language course discovery with AI query expansion and grounded reranking
+- Deterministic keyword fallback when the model API is unavailable
 - Relevance-ranked catalog search: subject numbers beat titles, titles beat description mentions
 - Filter menu for course number, level, offered term, requirement attribute, and units
 - Interactive course graph
@@ -46,7 +46,7 @@ OPENAI_API_KEY=your_key_here
 OPENAI_MODEL=gpt-5.6-luna
 ```
 
-The browser never receives the API key. If the AI endpoint is unavailable, discovery automatically falls back to deterministic keyword matching.
+The browser never receives the API key. The server interprets the student's goal into academic search concepts, retrieves a small candidate set from the checked-in catalog, and asks the model to rank only those candidates. Returned course IDs are validated against that candidate set, and supporting text always comes from the catalog. If the AI endpoint is unavailable, discovery automatically falls back to deterministic keyword matching.
 
 ## Deploy
 
@@ -56,6 +56,7 @@ Recommended host: Vercel.
 - Build command: `npm run build`
 - Output directory: `dist`
 - Add `OPENAI_API_KEY` and optionally `OPENAI_MODEL` in Vercel Environment Variables.
+- Redeploy after adding the environment variable. `vercel.json` bundles the checked-in catalog with the recommendation function.
 
 ## Catalog, requirements, and prior credit
 

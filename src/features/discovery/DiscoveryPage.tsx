@@ -121,9 +121,11 @@ export default function DiscoveryPage() {
 
       dispatch({ type: "SET_RECOMMENDATIONS", results });
       const keywordOnly = results.length > 0 && results.every((result) => result.recommendationMethod === "keyword");
-      setMethodNote(keywordOnly
-        ? "Showing deterministic matches from the imported MIT catalog."
-        : "AI-assisted recommendations grounded in the imported MIT catalog.");
+      setMethodNote(!results.length
+        ? "No catalog matches. Try a subject number, a broader interest, or fewer filters."
+        : keywordOnly
+          ? "Showing deterministic matches from the imported MIT catalog."
+          : "AI-assisted recommendations grounded in the imported MIT catalog.");
     } catch {
       try {
         const { courses } = await loadCatalog();
