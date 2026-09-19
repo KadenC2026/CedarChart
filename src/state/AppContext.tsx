@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useReducer, type ReactNode } from "react";
-import type { AppState, InterestSearchResult } from "../domain/types";
+import type { AppState, InterestSearchResult, PlannedCourse } from "../domain/types";
 
 type Action =
   | { type: "SELECT_COURSE"; courseId: string }
@@ -8,6 +8,10 @@ type Action =
   | { type: "TOGGLE_COMPLETED"; courseId: string }
   | { type: "SET_QUERY"; query: string }
   | { type: "SET_RECOMMENDATIONS"; results: InterestSearchResult[] }
+  | { type: "ADD_PLANNED_COURSE"; course: PlannedCourse }
+  | { type: "REMOVE_PLANNED_COURSE"; courseId: string; term: number }
+  | { type: "MOVE_PLANNED_COURSE"; courseId: string; fromTerm: number; toTerm: number }
+  | { type: "SET_REQUIREMENT"; requirementId: string | null }
   | { type: "RESET" };
 
 const initialState: AppState = {
@@ -17,6 +21,8 @@ const initialState: AppState = {
   targetCourseId: null,
   interestQuery: "",
   recommendations: [],
+  plannedCourses: [],
+  selectedRequirementId: null,
 };
 
 function reducer(state: AppState, action: Action): AppState {
@@ -24,17 +30,9 @@ function reducer(state: AppState, action: Action): AppState {
     case "SELECT_COURSE":
       return { ...state, selectedCourseId: action.courseId };
     case "SHOW_ON_MAP":
-      return {
-        ...state,
-        selectedCourseId: action.courseId,
-        highlightedCourseIds: [action.courseId],
-      };
+      return { ...state, selectedCourseId: action.courseId, highlightedCourseIds: [action.courseId] };
     case "OPEN_PATHWAY":
-      return {
-        ...state,
-        selectedCourseId: action.courseId,
-        targetCourseId: action.courseId,
-      };
+      return { ...state, selectedCourseId: action.courseId, targetCourseId: action.courseId };
     case "TOGGLE_COMPLETED": {
       const has = state.completedCourseIds.includes(action.courseId);
       return {
@@ -47,34 +45,47 @@ function reducer(state: AppState, action: Action): AppState {
     case "SET_QUERY":
       return { ...state, interestQuery: action.query };
     case "SET_RECOMMENDATIONS":
+      return { ...state, recommendations: action.results, highlightedCourseIds: action.results.map((r) => r.courseId) };
+    case "ADD_PLANNED_COURSE": {
+      const exists = state.plannedCourses.some(
+        (course) => course.courseId === action.course.courseId && course.term === action.course.term,
+      );
+      return exists ? state : { ...state, plannedCourses: [...state.plannedCourses, action.course] };
+    }
+    case "REMOVE_PLANNED_COURSE":
       return {
         ...state,
-        recommendations: action.results,
-        highlightedCourseIds: action.results.map((result) => result.courseId),
+        plannedCourses: state.plannedCourses.filter(
+          (course) => !(course.courseId === action.courseId && course.term === action.term),
+        ),
       };
+    case "MOVE_PLANNED_COURSE":
+      return {
+        ...state,
+        plannedCourses: state.plannedCourses.map((course) =>
+          course.courseId === action.courseId && course.term === action.fromTerm
+            ? { ...course, term: action.toTerm }
+            : course,
+        ),
+      };
+    case "SET_REQUIREMENT":
+      return { ...state, selectedRequirementId: action.requirementId };
     case "RESET":
       return initialState;
   }
 }
 
-const AppContext = createContext<{
-  state: AppState;
-  dispatch: React.Dispatch<Action>;
-} | null>(null);
+const AppContext = createContext<{ state: AppState; dispatch: React.Dispatch<Action> } | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(
-    reducer,
-    initialState,
-    (base) => {
-      try {
-        const saved = localStorage.getItem("cedarchart-state");
-        return saved ? { ...base, ...JSON.parse(saved) } : base;
-      } catch {
-        return base;
-      }
-    },
-  );
+  const [state, dispatch] = useReducer(reducer, initialState, (base) => {
+    try {
+      const saved = localStorage.getItem("cedarchart-state");
+      return saved ? { ...base, ...JSON.parse(saved) } : base;
+    } catch {
+      return base;
+    }
+  });
 
   useEffect(() => {
     localStorage.setItem("cedarchart-state", JSON.stringify(state));
