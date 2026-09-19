@@ -20,12 +20,14 @@ function tokens(text: string) {
   );
 }
 
-function overlapScore(a: string, b: string) {
-  const aa = tokens(a);
-  const bb = tokens(b);
-  if (!aa.size || !bb.size) return 0;
-  const overlap = [...aa].filter((token) => bb.has(token)).length;
-  return overlap / Math.max(aa.size, bb.size);
+function overlapScoreFromTokens(a: Set<string>, text: string) {
+  const b = tokens(text);
+  if (!a.size || !b.size) return 0;
+  let overlap = 0;
+  for (const token of a) {
+    if (b.has(token)) overlap += 1;
+  }
+  return overlap / Math.max(a.size, b.size);
 }
 
 function departmentOf(subjectId: string) {
@@ -56,8 +58,9 @@ export function recommendNextCourses({
     : undefined;
   const requirementSet = new Set(selectedRequirement ? requirementSubjects(selectedRequirement) : []);
 
-  const currentText = [current.title, current.description ?? ""].join(" ");
+  const currentTokens = tokens([current.title, current.description ?? ""].join(" "));
   const interestTokens = tokens(interests);
+  const currentDepartment = departmentOf(current.subject_id);
 
   return catalog
     .filter((candidate) => !excluded.has(candidate.subject_id))
@@ -76,33 +79,30 @@ export function recommendNextCourses({
         reasons.push("It appears in your selected major/minor requirements.");
       }
 
-      if (departmentOf(candidate.subject_id) === departmentOf(current.subject_id)) {
+      if (departmentOf(candidate.subject_id) === currentDepartment) {
         score += 12;
         reasons.push("It continues within the same department.");
       }
 
-      const similarity = overlapScore(
-        currentText,
-        [candidate.title, candidate.description ?? ""].join(" "),
-      );
+      const candidateText = [candidate.title, candidate.description ?? ""].join(" ");
+      const similarity = overlapScoreFromTokens(currentTokens, candidateText);
       if (similarity > 0) {
         score += similarity * 28;
-        if (similarity >= 0.18) reasons.push("Its topics are closely related to what you are studying now.");
+        if (similarity >= 0.18) {
+          reasons.push("Its topics are closely related to what you are studying now.");
+        }
       }
 
       if (interestTokens.size) {
-        const candidateTokens = tokens([candidate.title, candidate.description ?? ""].join(" "));
-        const interestOverlap = [...interestTokens].filter((token) => candidateTokens.has(token)).length;
+        const candidateTokens = tokens(candidateText);
+        let interestOverlap = 0;
+        for (const token of interestTokens) {
+          if (candidateTokens.has(token)) interestOverlap += 1;
+        }
         if (interestOverlap) {
           score += Math.min(24, interestOverlap * 8);
           reasons.push("It matches your stated interests.");
         }
-      }
-
-      const downstreamCount = catalog.filter((later) => referencesCourse(later.prerequisites, candidate)).length;
-      if (downstreamCount > 0) {
-        score += Math.min(12, downstreamCount * 1.5);
-        if (downstreamCount >= 3) reasons.push("It keeps several later-course options open.");
       }
 
       const relationship: NextCourseRecommendation["relationship"] =
