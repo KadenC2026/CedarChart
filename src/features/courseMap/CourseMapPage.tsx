@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import {
   Background,
   Controls,
@@ -13,6 +13,9 @@ import {
 import type { RemoteCourse } from "../../domain/types";
 import { useCatalog } from "../../data/catalog";
 import { referencesCourse } from "../../domain/progression";
+import { useApp } from "../../state/AppContext";
+import { recommendNextCourses, type NextCourseRecommendation } from "../../domain/nextCourses";
+import { localId, requirementLabel } from "../../domain/requirements";
 import {
   buildCourseFamilies,
   searchFamilies,
@@ -24,9 +27,7 @@ import {
   emptyFilters,
   type CourseFilters,
 } from "../../domain/courseSearch";
-import { localId } from "../../domain/requirements";
 import { plannerTerms, termLabel } from "../../domain/terms";
-import { useApp } from "../../state/AppContext";
 import CourseFilterMenu from "../../components/CourseFilterMenu";
 
 type GraphData = {
@@ -149,7 +150,10 @@ export default function CourseMapPage() {
   const [filters, setFilters] = useState<CourseFilters>(emptyFilters);
   const [targetFamilyId, setTargetFamilyId] = useState<string | null>(null);
   const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null);
-  const [addTerm, setAddTerm] = useState(0);
+  const [scheduleTerm, setScheduleTerm] = useState(0);
+  const [nextCourseInterests, setNextCourseInterests] = useState("");
+  const [nextCourseResults, setNextCourseResults] = useState<Array<NextCourseRecommendation & { explanation?: string; method?: string }>>([]);
+  const [nextCourseLoading, setNextCourseLoading] = useState(false);
   const normalized = query.trim().toLowerCase();
 
   const departments = useMemo(() => departmentOptions(catalog), [catalog]);
@@ -180,6 +184,7 @@ export default function CourseMapPage() {
     setQuery(family.label);
     setTargetFamilyId(family.id);
     setSelectedFamilyId(family.id);
+    setNextCourseResults([]);
   }
 
   function submit(event: FormEvent) {
@@ -198,18 +203,6 @@ export default function CourseMapPage() {
     if (family) chooseFamily(family);
   }
 
-  function addToPlan(family: CourseFamily) {
-    dispatch({
-      type: "ADD_PLANNED_COURSE",
-      course: {
-        courseId: family.primary.subject_id,
-        title: family.primary.title,
-        units: family.primary.total_units,
-        term: addTerm,
-      },
-    });
-  }
-
   function plannedTermsFor(family: CourseFamily) {
     return state.plannedCourses
       .filter((course) => localId(course.courseId) === family.primary.subject_id)
@@ -220,6 +213,108 @@ export default function CourseMapPage() {
     setTargetFamilyId(null);
     setSelectedFamilyId(null);
     setQuery("");
+    setNextCourseResults([]);
+  }
+
+  function addSelectedToSchedule() {
+    if (!selected) return;
+    const course = selected.primary;
+    dispatch({
+      type: "ADD_PLANNED_COURSE",
+      course: {
+        courseId: course.subject_id,
+        title: course.title,
+        units: course.total_units,
+        term: scheduleTerm,
+      },
+    });
+  }
+
+  function isSelectedScheduled() {
+    if (!selected) return false;
+    return state.plannedCourses.some(
+      (course) =>
+        selected.members.some((member) => member.subject_id === localId(course.courseId)) &&
+        course.term === scheduleTerm,
+    );
+  }
+
+  async function findLogicalNextCourses() {
+    if (!selected || !data) return;
+    setNextCourseLoading(true);
+
+    const deterministic = recommendNextCourses({
+      current: selected.primary,
+      catalog,
+      requirements: data.requirements,
+      state,
+      interests: nextCourseInterests,
+      limit: 15,
+    });
+
+    const selectedRequirement = state.selectedRequirementId
+      ? data.requirements[state.selectedRequirementId]
+      : undefined;
+
+    try {
+      const response = await fetch("/api/next-courses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentCourse: {
+            subjectId: selected.primary.subject_id,
+            title: selected.primary.title,
+            description: selected.primary.description,
+          },
+          interests: nextCourseInterests,
+          majorLabel: selectedRequirement ? requirementLabel(selectedRequirement) : "",
+          candidates: deterministic.map((item) => ({
+            subjectId: item.course.subject_id,
+            title: item.course.title,
+            description: item.course.description,
+            relationship: item.relationship,
+            deterministicScore: item.score,
+            deterministicReasons: item.reasons,
+          })),
+        }),
+      });
+
+      if (!response.ok) throw new Error("AI ranking unavailable");
+      const payload = await response.json();
+      const rankedIds = Array.isArray(payload.results) ? payload.results : [];
+      const byId = new Map(deterministic.map((item) => [item.course.subject_id, item]));
+
+      const ranked = rankedIds
+        .map((item: { subjectId: string; explanation?: string; method?: string }) => {
+          const base = byId.get(item.subjectId);
+          return base ? { ...base, explanation: item.explanation, method: item.method } : null;
+        })
+        .filter(Boolean) as Array<NextCourseRecommendation & { explanation?: string; method?: string }>;
+
+      const seen = new Set(ranked.map((item) => item.course.subject_id));
+      setNextCourseResults([
+        ...ranked,
+        ...deterministic
+          .filter((item) => !seen.has(item.course.subject_id))
+          .slice(0, Math.max(0, 8 - ranked.length)),
+      ]);
+    } catch {
+      setNextCourseResults(deterministic.slice(0, 8));
+    } finally {
+      setNextCourseLoading(false);
+    }
+  }
+
+  function addRecommendationToSchedule(course: RemoteCourse) {
+    dispatch({
+      type: "ADD_PLANNED_COURSE",
+      course: {
+        courseId: course.subject_id,
+        title: course.title,
+        units: course.total_units,
+        term: scheduleTerm,
+      },
+    });
   }
 
   if (error) {
@@ -238,6 +333,11 @@ export default function CourseMapPage() {
   if (!target || !graph) {
     return (
       <section className="course-map-home">
+        <nav className="course-map-index-nav" aria-label="Cedar pages">
+          <NavLink to="/planner">Plan</NavLink>
+          <NavLink to="/">Discover</NavLink>
+          <NavLink to="/map">Map</NavLink>
+        </nav>
         <div className="course-map-home-inner">
           <div className="course-map-wordmark">cedar</div>
           <form className="course-map-search-home" onSubmit={submit}>
@@ -285,6 +385,11 @@ export default function CourseMapPage() {
 
   return (
     <section className="course-map-shell">
+      <nav className="course-map-index-nav" aria-label="Cedar pages">
+          <NavLink to="/planner">Plan</NavLink>
+          <NavLink to="/">Discover</NavLink>
+          <NavLink to="/map">Map</NavLink>
+        </nav>
       <div className="course-map-floating-search">
         <button className="course-map-mini-brand" onClick={resetSearch}>cedar</button>
         <form onSubmit={submit}>
@@ -350,6 +455,94 @@ export default function CourseMapPage() {
             <div><span>Outside class</span><strong>{selected.primary.out_of_class_hours != null ? selected.primary.out_of_class_hours + " hrs/wk" : "—"}</strong></div>
           </div>
 
+          <div className="course-map-schedule">
+            <label htmlFor="course-map-term">Add to schedule</label>
+            <div>
+              <select
+                id="course-map-term"
+                value={scheduleTerm}
+                onChange={(event) => setScheduleTerm(Number(event.target.value))}
+              >
+                {plannerTerms.map((term, index) => (
+                  <option value={index} key={term}>{term}</option>
+                ))}
+              </select>
+              <button
+                className="primary-button"
+                onClick={addSelectedToSchedule}
+                disabled={isSelectedScheduled()}
+              >
+                {isSelectedScheduled() ? "Added ✓" : "+ Add"}
+              </button>
+            </div>
+          </div>
+
+
+          <div className="course-next-panel">
+            <div className="course-next-heading">
+              <div>
+                <span>Where can I go from here?</span>
+                <small>Recommendations are not prerequisite requirements.</small>
+              </div>
+            </div>
+            <input
+              value={nextCourseInterests}
+              onChange={(event) => setNextCourseInterests(event.target.value)}
+              placeholder="Optional: pure math, ML, finance, applied math…"
+            />
+            <button
+              className="secondary-button course-next-find"
+              onClick={findLogicalNextCourses}
+              disabled={nextCourseLoading}
+            >
+              {nextCourseLoading ? "Finding logical next courses…" : "Recommend next courses"}
+            </button>
+
+            {nextCourseResults.length > 0 && (
+              <div className="course-next-results">
+                {nextCourseResults.map((recommendation) => {
+                  const alreadyPlanned = state.plannedCourses.some(
+                    (planned) => localId(planned.courseId) === recommendation.course.subject_id && planned.term === scheduleTerm,
+                  );
+                  return (
+                    <article className="course-next-card" key={recommendation.course.subject_id}>
+                      <div className="course-next-card-top">
+                        <div>
+                          <strong>{recommendation.course.subject_id}</strong>
+                          <span>{recommendation.course.title}</span>
+                        </div>
+                        <span className={"course-next-badge " + recommendation.relationship}>
+                          {recommendation.relationship === "required-next"
+                            ? "Builds directly"
+                            : recommendation.relationship === "recommended-next"
+                              ? "Recommended next"
+                              : "Related direction"}
+                        </span>
+                      </div>
+                      <p>
+                        {recommendation.explanation ??
+                          recommendation.reasons[0] ??
+                          "Logical continuation based on your current course and academic plan."}
+                      </p>
+                      {recommendation.reasons.length > 1 && (
+                        <ul>
+                          {recommendation.reasons.slice(1, 3).map((reason) => <li key={reason}>{reason}</li>)}
+                        </ul>
+                      )}
+                      <button
+                        className="text-button"
+                        disabled={alreadyPlanned}
+                        onClick={() => addRecommendationToSchedule(recommendation.course)}
+                      >
+                        {alreadyPlanned ? "Added to selected term ✓" : "+ Add to selected term"}
+                      </button>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           <div className="course-map-rule">
             <span>Prerequisites</span>
             <p>{selected.primary.prerequisites || "No listed prerequisites."}</p>
@@ -373,21 +566,6 @@ export default function CourseMapPage() {
           )}
 
           <div className="course-map-plan-actions">
-            <label>
-              <span>Add to</span>
-              <select
-                value={addTerm}
-                onChange={(event) => setAddTerm(Number(event.target.value))}
-                aria-label="Term to add this course to"
-              >
-                {plannerTerms.map((term, index) => (
-                  <option value={index} key={term}>{term}</option>
-                ))}
-              </select>
-            </label>
-            <button className="add-course-button" onClick={() => addToPlan(selected)}>
-              + Add to plan
-            </button>
             <Link to={"/course/" + encodeURIComponent("mit:" + selected.primary.subject_id)}>
               Open progression →
             </Link>
