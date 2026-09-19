@@ -337,6 +337,7 @@ export default function CourseMapPage() {
           <NavLink to="/planner">Plan</NavLink>
           <NavLink to="/">Discover</NavLink>
           <NavLink to="/map">Map</NavLink>
+          <NavLink to="/schedule">Schedule</NavLink>
         </nav>
         <div className="course-map-home-inner">
           <div className="course-map-wordmark">cedar</div>
@@ -389,6 +390,7 @@ export default function CourseMapPage() {
           <NavLink to="/planner">Plan</NavLink>
           <NavLink to="/">Discover</NavLink>
           <NavLink to="/map">Map</NavLink>
+          <NavLink to="/schedule">Schedule</NavLink>
         </nav>
       <div className="course-map-floating-search">
         <button className="course-map-mini-brand" onClick={resetSearch}>cedar</button>
