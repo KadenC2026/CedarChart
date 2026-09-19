@@ -724,3 +724,35 @@ button:disabled { cursor: default; opacity: .65; }
   }
   .course-map-legend { display: none; }
 }
+
+
+.course-map-node-content small {
+  color: #7a7a7a;
+  font-size: 10px;
+}
+.course-family-variants {
+  margin: 10px 0 14px;
+}
+.course-family-variants > span {
+  display: block;
+  color: #777;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 7px;
+}
+.course-family-variants > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.course-family-chip {
+  display: inline-flex;
+  align-items: center;
+  background: var(--green-soft);
+  color: var(--green);
+  border-radius: 999px;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 750;
+}
