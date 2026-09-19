@@ -4,6 +4,7 @@ import {
   departmentOf,
   departmentOptions,
   emptyFilters,
+  hasTitleMatch,
   matchesFilters,
   searchCourses,
   searchScore,
@@ -74,6 +75,11 @@ describe("course search ranking", () => {
   it("puts Course 6 ahead of Course 1 when searching algorithms", () => {
     const results = searchCourses(catalog, { query: "algorithms", filters: emptyFilters });
     expect(results.map((item) => item.subject_id)).toEqual(["6.1210", "6.5210", "1.000"]);
+  });
+
+  it("does not treat a description-only Course 1 mention as a title match", () => {
+    expect(hasTitleMatch([algorithms], "algorithms")).toBe(true);
+    expect(hasTitleMatch([civilComputation], "algorithms")).toBe(false);
   });
 
   it("matches a subject number typed without the period", () => {

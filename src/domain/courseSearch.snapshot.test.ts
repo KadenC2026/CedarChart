@@ -10,7 +10,13 @@ const catalog = JSON.parse(
 describe("search ranking over the imported catalog snapshot", () => {
   it("answers a topic search with the subject that teaches it", () => {
     const results = searchCourses(catalog, { query: "algorithms", filters: emptyFilters, limit: 5 });
-    expect(results[0]?.subject_id).toBe("6.1210");
+    expect(results.map((course) => course.subject_id)).toEqual([
+      "6.1210",
+      "6.1220",
+      "18.410",
+      "6.C01",
+      "6.C51",
+    ]);
     expect(departmentOf(results[0]?.subject_id ?? "")).toBe("6");
   });
 

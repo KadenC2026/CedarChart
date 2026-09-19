@@ -33,6 +33,7 @@ a { color: inherit; }
 .page { max-width: 1180px; margin: 0 auto; padding: 64px 24px 80px; }
 .hero-page { max-width: 900px; }
 .eyebrow { color: var(--green); font-weight: 800; text-transform: uppercase; font-size: 12px; letter-spacing: .12em; }
+.release-badge { display:inline-block; margin-left:8px; padding:4px 7px; border-radius:999px; background:var(--green); color:white; font-size:10px; letter-spacing:.08em; vertical-align:middle; }
 h1 { font-size: clamp(40px, 6vw, 68px); line-height: .98; letter-spacing: -.055em; margin: 12px 0 20px; }
 h2 { letter-spacing: -.025em; }
 .lede { color: var(--muted); font-size: 20px; line-height: 1.55; max-width: 720px; }
@@ -1250,4 +1251,22 @@ button:disabled { cursor: default; opacity: .65; }
 .course-next-card .text-button {
   font-size: 11px;
   padding-top: 7px;
+}
+
+
+.career-goal-field {
+  margin: 14px 0;
+}
+.career-goal-field label {
+  display: block;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+.career-goal-field label span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.course-next-panel > input + input {
+  margin-top: 7px;
 }

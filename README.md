@@ -44,9 +44,10 @@ Create `.env.local`:
 ```
 OPENAI_API_KEY=your_key_here
 OPENAI_MODEL=gpt-5.6-luna
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 ```
 
-The browser never receives the API key. The server interprets the student's goal into academic search concepts, retrieves a small candidate set from the checked-in catalog, and asks the model to rank only those candidates. Returned course IDs are validated against that candidate set, and supporting text always comes from the catalog. If the AI endpoint is unavailable, discovery automatically falls back to deterministic keyword matching.
+The browser never receives the API key. Discovery interprets the student's interests and optional career goal into academic search concepts, retrieves a small candidate set from the checked-in catalog, and asks the model to rank only those candidates. Returned course IDs are validated against that candidate set, and supporting text always comes from the catalog. Logical next-course ranking also uses embeddings when AI is configured. If the API is unavailable, CedarChart falls back to deterministic recommendations.
 
 ## Deploy
 
@@ -55,7 +56,7 @@ Recommended host: Vercel.
 - Framework preset: Vite
 - Build command: `npm run build`
 - Output directory: `dist`
-- Add `OPENAI_API_KEY` and optionally `OPENAI_MODEL` in Vercel Environment Variables.
+- Add `OPENAI_API_KEY` in Vercel Environment Variables. `OPENAI_MODEL` and `OPENAI_EMBEDDING_MODEL` are optional.
 - Redeploy after adding the environment variable. `vercel.json` bundles the checked-in catalog with the recommendation function.
 
 ## Catalog, requirements, and prior credit
