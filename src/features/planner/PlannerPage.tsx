@@ -69,18 +69,21 @@ export default function PlannerPage() {
   }
 
   return (
-    <section className="page planner-page">
-      <div className="planner-heading">
-        <div className="eyebrow">Your MIT road</div>
-        <h1>Plan your classes. Open a progression when a course matters.</h1>
-        <p className="lede">
-          Search the imported MIT catalog, place subjects into a four-year plan,
-          track a major or minor, and open a generated course progression without editing the graph itself.
-        </p>
+    <section className="planner-page planner-workspace-page">
+      <div className="planner-compact-header">
+        <div>
+          <div className="eyebrow">Your MIT road</div>
+          <h1>Plan your classes</h1>
+        </div>
+        <p>Search courses, track requirements, and build your four-year road without leaving this workspace.</p>
       </div>
 
-      <div className="planner-tools">
-        <div className="catalog-search-panel">
+      <div className="planner-dashboard">
+        <aside className="catalog-search-panel planner-pane planner-catalog-pane">
+          <div className="pane-heading">
+            <strong>Course catalog</strong>
+            <span>Add to {terms[activeTerm]}</span>
+          </div>
           <label htmlFor="course-search">Add a course</label>
           <input
             id="course-search"
@@ -109,9 +112,59 @@ export default function PlannerPage() {
           </div>
           {matches.length > limit && <button className="text-button" onClick={() => setLimit(n => n + 30)}>Show more subjects</button>}
           {data && !matches.length && <p>No subjects match your search.</p>}
-        </div>
+        </aside>
 
-        <aside className="requirements-panel">
+        <main className="planner-pane planner-road-pane">
+          <div className="road-pane-heading">
+            <div>
+              <strong>Four-year road</strong>
+              <span>Click an empty term to make it the add destination</span>
+            </div>
+            <span>{state.plannedCourses.length} planned course{state.plannedCourses.length === 1 ? "" : "s"}</span>
+          </div>
+          <div className="road-grid compact-road-grid">
+            {terms.map((term, termIndex) => {
+              const planned = state.plannedCourses.filter((course) => course.term === termIndex);
+              const units = planned.reduce((sum, course) => sum + (course.units ?? 0), 0);
+              return (
+                <article className={`term-card ${activeTerm === termIndex ? "active-term" : ""}`} key={term}>
+                  <div className="term-heading">
+                    <h2>{term}</h2>
+                    <span>{units} units</span>
+                  </div>
+                  <div className="term-courses">
+                    {planned.map((course) => (
+                      <div className="planned-course" key={course.courseId}>
+                        <button onClick={() => openProgression(course.courseId)}>
+                          <strong>{course.courseId}</strong>
+                          <span>{course.title}</span>
+                        </button>
+                        <label className="planned-completed" title="Mark completed"><input type="checkbox" aria-label={`Completed ${course.courseId}`} checked={earned.has(localId(course.courseId))}
+                          disabled={state.priorCredits.some(c => localId(c.courseId) === localId(course.courseId))}
+                          onChange={() => dispatch({ type: "TOGGLE_COMPLETED", courseId: `mit:${localId(course.courseId)}` })} /></label>
+                        <button
+                          className="remove-course"
+                          aria-label={"Remove " + course.courseId}
+                          onClick={() => dispatch({ type: "REMOVE_PLANNED_COURSE", courseId: course.courseId, term: termIndex })}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                    {!planned.length && (
+                      <button className="empty-term" onClick={() => setActiveTerm(termIndex)}>
+                        + Add a course
+                      </button>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </main>
+
+        <aside className="planner-pane planner-right-pane">
+          <div className="requirements-panel">
           <label htmlFor="requirement-select">Track a major or minor</label>
           <select
             id="requirement-select"
@@ -139,49 +192,11 @@ export default function PlannerPage() {
           </>}
           {state.selectedRequirementId && data && !selectedRequirement && <p className="error-note">This saved program is no longer available. Choose a program above.</p>}
 
+          </div>
+          <div className="planner-credit-wrap">
+            <PriorCreditPanel catalog={catalog} />
+          </div>
         </aside>
-      </div>
-
-      <PriorCreditPanel catalog={catalog} />
-
-      <div className="road-grid">
-        {terms.map((term, termIndex) => {
-          const planned = state.plannedCourses.filter((course) => course.term === termIndex);
-          const units = planned.reduce((sum, course) => sum + (course.units ?? 0), 0);
-          return (
-            <article className={`term-card ${activeTerm === termIndex ? "active-term" : ""}`} key={term}>
-              <div className="term-heading">
-                <h2>{term}</h2>
-                <span>{units} units</span>
-              </div>
-              <div className="term-courses">
-                {planned.map((course) => (
-                  <div className="planned-course" key={course.courseId}>
-                    <button onClick={() => openProgression(course.courseId)}>
-                      <strong>{course.courseId}</strong>
-                      <span>{course.title}</span>
-                    </button>
-                    <label className="planned-completed" title="Mark completed"><input type="checkbox" aria-label={`Completed ${course.courseId}`} checked={earned.has(localId(course.courseId))}
-                      disabled={state.priorCredits.some(c => localId(c.courseId) === localId(course.courseId))}
-                      onChange={() => dispatch({ type: "TOGGLE_COMPLETED", courseId: `mit:${localId(course.courseId)}` })} /></label>
-                    <button
-                      className="remove-course"
-                      aria-label={"Remove " + course.courseId}
-                      onClick={() => dispatch({ type: "REMOVE_PLANNED_COURSE", courseId: course.courseId, term: termIndex })}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-                {!planned.length && (
-                  <button className="empty-term" onClick={() => setActiveTerm(termIndex)}>
-                    + Add a course
-                  </button>
-                )}
-              </div>
-            </article>
-          );
-        })}
       </div>
     </section>
   );
