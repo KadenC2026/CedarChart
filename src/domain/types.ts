@@ -38,6 +38,7 @@ export type RemoteCourse = {
   rating?: number;
   in_class_hours?: number;
   out_of_class_hours?: number;
+  url?: string;
 };
 
 export type PlannedCourse = {
