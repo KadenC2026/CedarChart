@@ -15,6 +15,10 @@ import type { RemoteCourse } from "../../domain/types";
 import { useCatalog } from "../../data/catalog";
 import { courseWebsiteFor } from "../../data/courseSites";
 import { referencesCourse } from "../../domain/progression";
+import {
+  parseCatalogPrerequisites,
+  type CatalogPrerequisiteExpression,
+} from "../../domain/prerequisites";
 import { useApp } from "../../state/AppContext";
 import { recommendNextCourses, type NextCourseRecommendation } from "../../domain/nextCourses";
 import { localId, requirementLabel } from "../../domain/requirements";
@@ -38,6 +42,13 @@ type GraphData = {
   nodes: Node[];
   edges: Edge[];
   familyByNodeId: Map<string, CourseFamily>;
+  logicByNodeId: Map<string, LogicNodeData>;
+};
+
+type LogicNodeData = {
+  expanded: boolean;
+  hiddenCount: number;
+  kind: "all" | "any";
 };
 
 type RoutedEdgeData = {
@@ -124,100 +135,142 @@ function offeringText(course: RemoteCourse) {
   return terms.length ? terms.join(", ") : "Check catalog";
 }
 
-function familyReferencesFamily(dependent: CourseFamily, prerequisite: CourseFamily) {
-  return dependent.members.some((dependentCourse) =>
-    prerequisite.members.some((prereqCourse) =>
-      referencesCourse(dependentCourse.prerequisites, prereqCourse),
-    ),
+function familyForPrerequisiteToken(token: string, families: CourseFamily[]) {
+  return families.find((family) =>
+    family.members.some((course) => referencesCourse(token, course)),
   );
 }
 
-function buildPrerequisiteGraph(target: CourseFamily, families: CourseFamily[]): GraphData {
-  const discovered = new Map<string, { family: CourseFamily; depth: number }>();
+function familiesInExpression(expression: CatalogPrerequisiteExpression, families: CourseFamily[]) {
+  if (expression.type === "token") {
+    const family = familyForPrerequisiteToken(expression.value, families);
+    return family ? [family] : [];
+  }
+  const unique = new Map<string, CourseFamily>();
+  for (const child of expression.children) {
+    for (const family of familiesInExpression(child, families)) unique.set(family.id, family);
+  }
+  return [...unique.values()];
+}
+
+function buildPrerequisiteGraph(
+  target: CourseFamily,
+  families: CourseFamily[],
+  selectedFamilyIds: Set<string>,
+  choiceExpansionOverrides: Record<string, boolean>,
+): GraphData {
+  const discovered = new Map<string, CourseFamily>();
   const edgeKeys = new Set<string>();
   const edges: Edge[] = [];
-  const queue: Array<{ family: CourseFamily; depth: number }> = [{ family: target, depth: 0 }];
-  discovered.set(target.id, { family: target, depth: 0 });
+  const logicByNodeId = new Map<string, LogicNodeData>();
+  const queue: CourseFamily[] = [target];
+  discovered.set(target.id, target);
 
   let cursor = 0;
   const maxNodes = 70;
 
+  const addEdge = (source: string, edgeTarget: string, arrow = true) => {
+    const edgeKey = `${source}->${edgeTarget}`;
+    if (edgeKeys.has(edgeKey)) return;
+    edgeKeys.add(edgeKey);
+    edges.push({
+      id: edgeKey,
+      source,
+      target: edgeTarget,
+      ...(arrow ? { markerEnd: { type: MarkerType.ArrowClosed } } : {}),
+    });
+  };
+
+  const discover = (family: CourseFamily) => {
+    if (discovered.size + logicByNodeId.size >= maxNodes || discovered.has(family.id)) return;
+    discovered.set(family.id, family);
+    queue.push(family);
+  };
+
+  const connectExpression = (
+    expression: CatalogPrerequisiteExpression,
+    edgeTarget: string,
+    path: string,
+    flattenAll: boolean,
+  ) => {
+    if (discovered.size + logicByNodeId.size >= maxNodes) return;
+    if (expression.type === "token") {
+      const family = familyForPrerequisiteToken(expression.value, families);
+      if (!family || family.id === edgeTarget) return;
+      discover(family);
+      addEdge(family.id, edgeTarget, !logicByNodeId.has(edgeTarget));
+      return;
+    }
+
+    if (expression.type === "all" && flattenAll) {
+      expression.children.forEach((child, index) =>
+        connectExpression(child, edgeTarget, `${path}.${index}`, true),
+      );
+      return;
+    }
+
+    if (expression.type === "any") {
+      const branchFamilies = expression.children.map((child) => familiesInExpression(child, families));
+      const uniqueFamilies = new Map(
+        branchFamilies.flat().map((family) => [family.id, family]),
+      );
+      if (branchFamilies.every((branch) => branch.length > 0) && uniqueFamilies.size === 1) {
+        const family = [...uniqueFamilies.values()][0];
+        if (family.id !== edgeTarget) {
+          discover(family);
+          addEdge(family.id, edgeTarget, !logicByNodeId.has(edgeTarget));
+        }
+        return;
+      }
+    }
+
+    const logicId = `logic:${edgeTarget}:${path}:${expression.type}`;
+    let visibleChildren = expression.children;
+    let expanded = true;
+    let hiddenCount = 0;
+
+    if (expression.type === "any") {
+      const branches = expression.children.map((child) => familiesInExpression(child, families));
+      const selectedBranches = branches.map((branch) =>
+        branch.some((family) => selectedFamilyIds.has(family.id)),
+      );
+      const defaultsCollapsed = selectedBranches.some(Boolean);
+      expanded = choiceExpansionOverrides[logicId] ?? !defaultsCollapsed;
+      if (!expanded) {
+        visibleChildren = expression.children.filter((_, index) => selectedBranches[index]);
+      }
+      hiddenCount = expression.children.length - visibleChildren.length;
+      if (hiddenCount === 0) expanded = true;
+    }
+
+    logicByNodeId.set(logicId, { expanded, hiddenCount, kind: expression.type });
+    visibleChildren.forEach((child, index) =>
+      connectExpression(child, logicId, `${path}.${index}`, false),
+    );
+    addEdge(logicId, edgeTarget, !logicByNodeId.has(edgeTarget));
+  };
+
   while (cursor < queue.length && discovered.size < maxNodes) {
     const current = queue[cursor++];
-    const prereqs = families.filter(
-      (candidate) =>
-        candidate.id !== current.family.id &&
-        familyReferencesFamily(current.family, candidate),
-    );
-
-    for (const prereq of prereqs) {
-      if (discovered.size >= maxNodes) break;
-      const nextDepth = current.depth + 1;
-      const previous = discovered.get(prereq.id);
-      if (!previous || nextDepth > previous.depth) {
-        discovered.set(prereq.id, { family: prereq, depth: nextDepth });
-      }
-
-      const edgeKey = prereq.id + "->" + current.family.id;
-      if (!edgeKeys.has(edgeKey)) {
-        edgeKeys.add(edgeKey);
-        edges.push({
-          id: edgeKey,
-          source: prereq.id,
-          target: current.family.id,
-          markerEnd: { type: MarkerType.ArrowClosed },
-        });
-      }
-
-      if (!previous) queue.push({ family: prereq, depth: nextDepth });
-    }
+    const expression = parseCatalogPrerequisites(current.primary.prerequisites ?? "");
+    if (expression) connectExpression(expression, current.id, current.primary.subject_id, true);
   }
 
-  const layers = new Map<number, CourseFamily[]>();
-  for (const { family, depth } of discovered.values()) {
-    layers.set(depth, [...(layers.get(depth) ?? []), family]);
-  }
-
-  const nodes: Node[] = [];
-  const familyByNodeId = new Map<string, CourseFamily>();
-  const horizontalGap = 300;
-  const verticalGap = 122;
-
-  for (const [depth, layerFamilies] of [...layers.entries()].sort((a, b) => b[0] - a[0])) {
-    layerFamilies.sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
-    const totalHeight = Math.max(0, (layerFamilies.length - 1) * verticalGap);
-
-    layerFamilies.forEach((family, index) => {
-      const y = index * verticalGap - totalHeight / 2;
-      const x = -depth * horizontalGap;
-      const isTarget = family.id === target.id;
-      nodes.push({
-        id: family.id,
-        position: { x, y },
-        sourcePosition: Position.Right,
-        targetPosition: Position.Left,
-        className: "course-map-node" + (isTarget ? " course-map-target" : ""),
-        data: {
-          label: (
-            <div className="course-map-node-content">
-              <strong>{family.label}</strong>
-              <span>{family.title}</span>
-              {family.members.length > 1 && (
-                <small>{family.members.length} variants merged</small>
-              )}
-            </div>
-          ),
-        },
-      });
-      familyByNodeId.set(family.id, family);
-    });
-  }
-
-  return { nodes, edges, familyByNodeId };
+  return {
+    nodes: [],
+    edges,
+    familyByNodeId: new Map([...discovered].map(([id, family]) => [id, family])),
+    logicByNodeId,
+  };
 }
 
-export function buildPrerequisiteForest(targets: CourseFamily[], families: CourseFamily[]): GraphData {
+export function buildPrerequisiteForest(
+  targets: CourseFamily[],
+  families: CourseFamily[],
+  choiceExpansionOverrides: Record<string, boolean> = {},
+): GraphData {
   const familyByNodeId = new Map<string, CourseFamily>();
+  const logicByNodeId = new Map<string, LogicNodeData>();
   const edgeById = new Map<string, Edge>();
   const targetIds = new Set(targets.map((target) => target.id));
 
@@ -225,14 +278,16 @@ export function buildPrerequisiteForest(targets: CourseFamily[], families: Cours
   // its selected dependent therefore remain one connected graph instead of becoming
   // duplicate nodes in separate trees.
   for (const target of targets) {
-    const tree = buildPrerequisiteGraph(target, families);
+    const tree = buildPrerequisiteGraph(target, families, targetIds, choiceExpansionOverrides);
     for (const [id, family] of tree.familyByNodeId) familyByNodeId.set(id, family);
+    for (const [id, logic] of tree.logicByNodeId) logicByNodeId.set(id, logic);
     for (const edge of tree.edges) edgeById.set(`${edge.source}->${edge.target}`, edge);
   }
 
   const edges = [...edgeById.values()];
   const neighbors = new Map<string, Set<string>>();
-  for (const id of familyByNodeId.keys()) neighbors.set(id, new Set());
+  const allNodeIds = [...familyByNodeId.keys(), ...logicByNodeId.keys()];
+  for (const id of allNodeIds) neighbors.set(id, new Set());
   for (const edge of edges) {
     neighbors.get(edge.source)?.add(edge.target);
     neighbors.get(edge.target)?.add(edge.source);
@@ -240,7 +295,7 @@ export function buildPrerequisiteForest(targets: CourseFamily[], families: Cours
 
   const components: string[][] = [];
   const visited = new Set<string>();
-  for (const id of familyByNodeId.keys()) {
+  for (const id of allNodeIds) {
     if (visited.has(id)) continue;
     const component: string[] = [];
     const stack = [id];
@@ -267,9 +322,10 @@ export function buildPrerequisiteForest(targets: CourseFamily[], families: Cours
   });
 
   const nodes: Node[] = [];
-  const horizontalGap = 300;
-  const verticalGap = 122;
-  const componentGap = 210;
+  const horizontalGap = 275;
+  const verticalGap = 114;
+  const componentGap = 110;
+  const logicNodeWidth = 16;
   let nextComponentY = 0;
 
   for (const component of components) {
@@ -290,27 +346,39 @@ export function buildPrerequisiteForest(targets: CourseFamily[], families: Cours
     for (let cursor = 0; cursor < queue.length; cursor += 1) {
       const source = queue[cursor];
       for (const dependent of outgoing.get(source) ?? []) {
-        rank.set(dependent, Math.max(rank.get(dependent) ?? 0, (rank.get(source) ?? 0) + 1));
+        const rankStep = logicByNodeId.has(dependent) ? 0 : 1;
+        rank.set(dependent, Math.max(rank.get(dependent) ?? 0, (rank.get(source) ?? 0) + rankStep));
         incomingCount.set(dependent, (incomingCount.get(dependent) ?? 1) - 1);
         if (incomingCount.get(dependent) === 0) queue.push(dependent);
       }
     }
 
+    const logicDepth = (id: string): number => {
+      const logicTargets = (outgoing.get(id) ?? []).filter((targetId) => logicByNodeId.has(targetId));
+      return logicTargets.length ? 1 + Math.max(...logicTargets.map(logicDepth)) : 1;
+    };
+    const horizontalPosition = (id: string) => {
+      const base = (rank.get(id) ?? 0) * horizontalGap;
+      return logicByNodeId.has(id)
+        ? base + horizontalGap - 25 - (logicDepth(id) - 1) * 19
+        : base;
+    };
     const layers = new Map<number, string[]>();
     for (const id of component) {
-      const layer = rank.get(id) ?? 0;
+      const layer = horizontalPosition(id);
       layers.set(layer, [...(layers.get(layer) ?? []), id]);
     }
     for (const layer of layers.values()) {
       layer.sort((a, b) =>
-        familyByNodeId.get(a)!.label.localeCompare(familyByNodeId.get(b)!.label, undefined, { numeric: true }),
+        (familyByNodeId.get(a)?.label ?? logicByNodeId.get(a)?.kind ?? a)
+          .localeCompare(familyByNodeId.get(b)?.label ?? logicByNodeId.get(b)?.kind ?? b, undefined, { numeric: true }),
       );
     }
 
     const maxLayerSize = Math.max(...[...layers.values()].map((layer) => layer.length), 1);
     const componentHeight = Math.max(90, (maxLayerSize - 1) * verticalGap + 90);
-    const longEdges = componentEdges.filter(
-      (edge) => (rank.get(edge.target) ?? 0) - (rank.get(edge.source) ?? 0) > 1,
+    const longEdges = componentEdges.filter((edge) =>
+      horizontalPosition(edge.target) - horizontalPosition(edge.source) > horizontalGap + 1,
     );
     const routingBand = Math.max(componentGap, 70 + longEdges.length * 22);
     const componentTop = nextComponentY + routingBand;
@@ -320,21 +388,47 @@ export function buildPrerequisiteForest(targets: CourseFamily[], families: Cours
       const layerHeight = Math.max(0, (layerIds.length - 1) * verticalGap);
       const startY = componentTop + (componentHeight - layerHeight) / 2;
       layerIds.forEach((id, index) => {
-        const family = familyByNodeId.get(id)!;
-        const position = { x: layer * horizontalGap, y: startY + index * verticalGap };
+        const family = familyByNodeId.get(id);
+        const logic = logicByNodeId.get(id);
+        const position = { x: layer, y: startY + index * verticalGap };
         nodePosition.set(id, position);
         nodes.push({
           id,
           position,
           sourcePosition: Position.Right,
           targetPosition: Position.Left,
-          className: "course-map-node" + (targetIds.has(id) ? " course-map-target" : ""),
+          className: family
+            ? "course-map-node" + (targetIds.has(id) ? " course-map-target" : "")
+            : `course-map-logic-node course-map-logic-${logic?.kind ?? "all"}`,
           data: {
-            label: (
+            label: family ? (
               <div className="course-map-node-content">
                 <strong>{family.label}</strong>
                 <span>{family.title}</span>
                 {family.members.length > 1 && <small>{family.members.length} variants merged</small>}
+              </div>
+            ) : (
+              <div
+                className="course-map-logic-content"
+                aria-label={
+                  logic?.kind === "any"
+                    ? logic.expanded
+                      ? "Collapse prerequisite choices"
+                      : `Show ${logic?.hiddenCount ?? 0} more prerequisite choices`
+                    : "All prerequisites in this group are required"
+                }
+                title={
+                  logic?.kind === "any"
+                    ? logic.expanded
+                      ? "Collapse prerequisite choices"
+                      : `Show ${logic?.hiddenCount ?? 0} more prerequisite choices`
+                    : "All prerequisites in this group are required"
+                }
+              >
+                <strong>{logic?.kind === "any" ? "OR" : "AND"}</strong>
+                {logic?.kind === "any" && (
+                <small>{logic.expanded ? "−" : `+${logic.hiddenCount}`}</small>
+                )}
               </div>
             ),
           },
@@ -380,17 +474,22 @@ export function buildPrerequisiteForest(targets: CourseFamily[], families: Cours
 
     const adjacentEdges = sortedEdges.filter((edge) => !longEdges.includes(edge));
     for (const edgesInGap of (() => {
-      const groups = new Map<number, Edge[]>();
+      const groups = new Map<string, Edge[]>();
       for (const edge of adjacentEdges) {
         const sourceX = nodePosition.get(edge.source)?.x ?? 0;
-        groups.set(sourceX, [...(groups.get(sourceX) ?? []), edge]);
+        const targetX = nodePosition.get(edge.target)?.x ?? 0;
+        const key = `${sourceX}:${targetX}`;
+        groups.set(key, [...(groups.get(key) ?? []), edge]);
       }
       return groups.values();
     })()) {
       edgesInGap.forEach((edge, index) => {
         const sourceX = nodePosition.get(edge.source)?.x ?? 0;
-        const gapWidth = horizontalGap - 210;
-        updateEdgeData(edge, { channelX: sourceX + 210 + ((index + 1) * gapWidth) / (edgesInGap.length + 1) });
+        const targetX = nodePosition.get(edge.target)?.x ?? sourceX + horizontalGap;
+        const sourceWidth = logicByNodeId.has(edge.source) ? logicNodeWidth : 210;
+        const sourceRight = sourceX + sourceWidth;
+        const gapWidth = Math.max(8, targetX - sourceRight);
+        updateEdgeData(edge, { channelX: sourceRight + ((index + 1) * gapWidth) / (edgesInGap.length + 1) });
       });
     }
 
@@ -399,14 +498,17 @@ export function buildPrerequisiteForest(targets: CourseFamily[], families: Cours
       const longInGroup = edgesAfterLayer.filter((edge) => longIndex.has(edge.id));
       longInGroup.forEach((edge, index) => {
         const sourceX = nodePosition.get(edge.source)?.x ?? 0;
-        updateEdgeData(edge, { sourceExitX: sourceX + 218 + ((index + 1) * 64) / (longInGroup.length + 1) });
+        const sourceWidth = logicByNodeId.has(edge.source) ? logicNodeWidth : 210;
+        const available = Math.max(12, Math.min(56, horizontalGap - sourceWidth - 16));
+        updateEdgeData(edge, { sourceExitX: sourceX + sourceWidth + 8 + ((index + 1) * available) / (longInGroup.length + 1) });
       });
     }
     for (const edgesBeforeLayer of groupEdges((edge) => String(nodePosition.get(edge.target)?.x ?? 0))) {
       const longInGroup = edgesBeforeLayer.filter((edge) => longIndex.has(edge.id));
       longInGroup.forEach((edge, index) => {
         const targetX = nodePosition.get(edge.target)?.x ?? 0;
-        updateEdgeData(edge, { targetEntryX: targetX - 82 + ((index + 1) * 64) / (longInGroup.length + 1) });
+        const available = Math.max(12, Math.min(56, horizontalGap - 226));
+        updateEdgeData(edge, { targetEntryX: targetX - available - 8 + ((index + 1) * available) / (longInGroup.length + 1) });
       });
     }
     longEdges.forEach((edge, index) => updateEdgeData(edge, {
@@ -416,7 +518,7 @@ export function buildPrerequisiteForest(targets: CourseFamily[], families: Cours
     nextComponentY = componentTop + componentHeight;
   }
 
-  return { nodes, edges, familyByNodeId };
+  return { nodes, edges, familyByNodeId, logicByNodeId };
 }
 
 export default function CourseMapPage() {
@@ -436,6 +538,7 @@ export default function CourseMapPage() {
   const [nextCourseLoading, setNextCourseLoading] = useState(false);
   const [mapSearchLoading, setMapSearchLoading] = useState(false);
   const [mapSearchNote, setMapSearchNote] = useState<string | null>(null);
+  const [choiceExpansionOverrides, setChoiceExpansionOverrides] = useState<Record<string, boolean>>({});
   const normalized = query.trim().toLowerCase();
 
   const departments = useMemo(() => departmentOptions(catalog), [catalog]);
@@ -483,8 +586,10 @@ export default function CourseMapPage() {
   );
 
   const graph = useMemo(
-    () => (graphTargets.length ? buildPrerequisiteForest(graphTargets, families) : null),
-    [graphTargets, families],
+    () => (graphTargets.length
+      ? buildPrerequisiteForest(graphTargets, families, choiceExpansionOverrides)
+      : null),
+    [graphTargets, families, choiceExpansionOverrides],
   );
 
   const selected =
@@ -778,7 +883,17 @@ export default function CourseMapPage() {
           zoomOnPinch
           minZoom={0.08}
           maxZoom={2.2}
-          onNodeClick={(_, node) => setSelectedFamilyId(graph.familyByNodeId.get(node.id)?.id ?? null)}
+          onNodeClick={(_, node) => {
+            const logic = graph.logicByNodeId.get(node.id);
+            if (logic?.kind === "any") {
+              setChoiceExpansionOverrides((current) => ({
+                ...current,
+                [node.id]: !logic.expanded,
+              }));
+              return;
+            }
+            setSelectedFamilyId(graph.familyByNodeId.get(node.id)?.id ?? null);
+          }}
         >
           <Background gap={28} />
           <Controls position="bottom-right" showInteractive={false} />
@@ -989,7 +1104,7 @@ export default function CourseMapPage() {
 
       <div className="course-map-legend">
         <strong>{graphTargets.length} selected course{graphTargets.length === 1 ? "" : "s"}</strong>
-        <span>{graph.nodes.length} course families in prerequisite map</span>
+        <span>{graph.familyByNodeId.size} course families in prerequisite map</span>
       </div>
     </section>
   );

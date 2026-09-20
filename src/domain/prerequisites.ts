@@ -1,5 +1,84 @@
 import type { EvaluationResult, PrerequisiteRule } from "./types";
 
+export type CatalogPrerequisiteExpression =
+  | { type: "token"; value: string }
+  | { type: "all" | "any"; children: CatalogPrerequisiteExpression[] };
+
+function tokenizeCatalogPrerequisites(value: string) {
+  const normalized = value.replace(/\s+and\s+/gi, ",").replace(/\s+or\s+/gi, "/");
+  const tokens: string[] = [];
+  let current = "";
+  let quoted = false;
+
+  for (let index = 0; index < normalized.length; index += 1) {
+    const pair = normalized.slice(index, index + 2);
+    if (pair === "''") {
+      quoted = !quoted;
+      current += pair;
+      index += 1;
+      continue;
+    }
+    const character = normalized[index];
+    if (!quoted && ["(", ")", ",", "/"].includes(character)) {
+      if (current.trim()) tokens.push(current.trim());
+      tokens.push(character);
+      current = "";
+    } else {
+      current += character;
+    }
+  }
+  if (current.trim()) tokens.push(current.trim());
+  return tokens;
+}
+
+/** MIT catalog prerequisite strings use commas for AND and slashes for OR. */
+export function parseCatalogPrerequisites(value: string): CatalogPrerequisiteExpression | null {
+  const tokens = tokenizeCatalogPrerequisites(value);
+  let cursor = 0;
+
+  const parsePrimary = (): CatalogPrerequisiteExpression | null => {
+    const token = tokens[cursor];
+    if (!token) return null;
+    if (token === "(") {
+      cursor += 1;
+      const expression = parseAny();
+      if (tokens[cursor] === ")") cursor += 1;
+      return expression;
+    }
+    if ([")", ",", "/"].includes(token)) return null;
+    cursor += 1;
+    return { type: "token", value: token };
+  };
+
+  const parseAll = (): CatalogPrerequisiteExpression | null => {
+    const children: CatalogPrerequisiteExpression[] = [];
+    const first = parsePrimary();
+    if (first) children.push(first);
+    while (tokens[cursor] === ",") {
+      cursor += 1;
+      const child = parsePrimary();
+      if (child) children.push(child);
+    }
+    if (!children.length) return null;
+    return children.length === 1 ? children[0] : { type: "all", children };
+  };
+
+  const parseAny = (): CatalogPrerequisiteExpression | null => {
+    const children: CatalogPrerequisiteExpression[] = [];
+    const first = parseAll();
+    if (first) children.push(first);
+    while (tokens[cursor] === "/") {
+      cursor += 1;
+      const child = parseAll();
+      if (child) children.push(child);
+    }
+    if (!children.length) return null;
+    return children.length === 1 ? children[0] : { type: "any", children };
+  };
+
+  return parseAny();
+}
+
 export function evaluatePrerequisite(
   rule: PrerequisiteRule,
   completedCourseIds: Set<string>,

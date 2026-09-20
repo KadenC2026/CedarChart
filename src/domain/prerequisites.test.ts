@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluatePrerequisite } from "./prerequisites";
+import { evaluatePrerequisite, parseCatalogPrerequisites } from "./prerequisites";
 import type { PrerequisiteRule } from "./types";
 
 describe("evaluatePrerequisite", () => {
@@ -39,5 +39,55 @@ describe("evaluatePrerequisite", () => {
     expect(
       evaluatePrerequisite({ type: "permission", text: "Permission of instructor" }, new Set()).status,
     ).toBe("needs_review");
+  });
+});
+
+describe("parseCatalogPrerequisites", () => {
+  it("treats commas as AND and slashes as OR", () => {
+    expect(parseCatalogPrerequisites("18.01, (6.100A/6.100B)")).toEqual({
+      type: "all",
+      children: [
+        { type: "token", value: "18.01" },
+        {
+          type: "any",
+          children: [
+            { type: "token", value: "6.100A" },
+            { type: "token", value: "6.100B" },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("preserves grouped AND alternatives", () => {
+    expect(parseCatalogPrerequisites("(6.100A, 6.100B)/(6.100L, 16.C20)")).toEqual({
+      type: "any",
+      children: [
+        {
+          type: "all",
+          children: [
+            { type: "token", value: "6.100A" },
+            { type: "token", value: "6.100B" },
+          ],
+        },
+        {
+          type: "all",
+          children: [
+            { type: "token", value: "6.100L" },
+            { type: "token", value: "16.C20" },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("does not split punctuation inside quoted permission text", () => {
+    expect(parseCatalogPrerequisites("18.03/''permission of instructor, department approval''")).toEqual({
+      type: "any",
+      children: [
+        { type: "token", value: "18.03" },
+        { type: "token", value: "''permission of instructor, department approval''" },
+      ],
+    });
   });
 });

@@ -56,4 +56,46 @@ describe("course map forest layout", () => {
     expect(directEdge?.data?.routeY).toEqual(expect.any(Number));
     expect(adjacentEdge?.data?.routeY).toBeUndefined();
   });
+
+  it("joins OR prerequisites at a collapsible choice connector", () => {
+    const catalog = [
+      course("1.001", "Option A"),
+      course("1.002", "Option B"),
+      course("1.003", "Destination", "1.001/1.002"),
+    ];
+    const { families } = buildCourseFamilies(catalog);
+    const target = families.find((family) => family.id === "1.003")!;
+    const graph = buildPrerequisiteForest([target], families);
+    const [[choiceId, choice]] = [...graph.logicByNodeId.entries()];
+
+    expect(choice.kind).toBe("any");
+    expect(choice.expanded).toBe(true);
+    expect(graph.edges.map((edge) => `${edge.source}->${edge.target}`)).toEqual(expect.arrayContaining([
+      `1.001->${choiceId}`,
+      `1.002->${choiceId}`,
+      `${choiceId}->1.003`,
+    ]));
+    expect(graph.edges.find((edge) => edge.source === choiceId)?.markerEnd).toBeDefined();
+    expect(graph.edges.filter((edge) => edge.target === choiceId).every((edge) => !edge.markerEnd)).toBe(true);
+  });
+
+  it("collapses unselected OR branches by default and expands on request", () => {
+    const catalog = [
+      course("1.001", "Option A"),
+      course("1.002", "Option B"),
+      course("1.003", "Destination", "1.001/1.002"),
+    ];
+    const { families } = buildCourseFamilies(catalog);
+    const selected = families.filter((family) => ["1.001", "1.003"].includes(family.id));
+    const collapsed = buildPrerequisiteForest(selected, families);
+    const [[choiceId, choice]] = [...collapsed.logicByNodeId.entries()];
+
+    expect(choice).toMatchObject({ expanded: false, hiddenCount: 1 });
+    expect(collapsed.familyByNodeId.has("1.001")).toBe(true);
+    expect(collapsed.familyByNodeId.has("1.002")).toBe(false);
+
+    const expanded = buildPrerequisiteForest(selected, families, { [choiceId]: true });
+    expect(expanded.logicByNodeId.get(choiceId)).toMatchObject({ expanded: true, hiddenCount: 0 });
+    expect(expanded.familyByNodeId.has("1.002")).toBe(true);
+  });
 });
