@@ -80,6 +80,25 @@ export function buildCourseFamilies(catalog: RemoteCourse[]) {
     }
   }
 
+  // The catalog occasionally omits equivalent_subjects on Concourse (CC) or
+  // Experimental Study Group (ES) versions of a GIR. Match those learning-
+  // community subjects to the same GIR only when their titles also agree.
+  // Requiring both signals avoids collapsing unrelated ways to satisfy a GIR.
+  const learningCommunityCourses = catalog.filter((course) =>
+    /^(CC|ES)\./.test(course.subject_id) && Boolean(course.gir_attribute),
+  );
+  for (const learningCourse of learningCommunityCourses) {
+    for (const candidate of catalog) {
+      if (
+        candidate.subject_id !== learningCourse.subject_id &&
+        candidate.gir_attribute === learningCourse.gir_attribute &&
+        titlesAreSimilar(candidate.title, learningCourse.title)
+      ) {
+        uf.union(learningCourse.subject_id, candidate.subject_id);
+      }
+    }
+  }
+
   // Group lettered variants only when their titles indicate the same subject.
   const byStem = new Map<string, RemoteCourse[]>();
   for (const course of catalog) {

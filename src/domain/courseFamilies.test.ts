@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { buildCourseFamilies } from "./courseFamilies";
 import type { RemoteCourse } from "./types";
 
-function course(subject_id: string, title: string, equivalent_subjects?: string[]): RemoteCourse {
-  return { subject_id, title, equivalent_subjects };
+function course(subject_id: string, title: string, equivalent_subjects?: string[], gir_attribute?: string): RemoteCourse {
+  return { subject_id, title, equivalent_subjects, gir_attribute };
 }
 
 describe("course family grouping", () => {
@@ -40,5 +40,31 @@ describe("course family grouping", () => {
     ]);
 
     expect(familyByCourseId.get("1.001")).toBe(familyByCourseId.get("2.001"));
+  });
+
+  it("merges Concourse and ESG variants when catalog equivalencies are missing", () => {
+    const { familyByCourseId } = buildCourseFamilies([
+      course("8.02", "Physics II", ["ES.802"], "PHY2"),
+      course("ES.802", "Physics II", ["8.02"], "PHY2"),
+      course("CC.802", "Physics II", undefined, "PHY2"),
+    ]);
+
+    expect(familyByCourseId.get("CC.802")).toBe(familyByCourseId.get("8.02"));
+    expect(familyByCourseId.get("CC.802")?.members.map((item) => item.subject_id)).toEqual([
+      "8.02",
+      "CC.802",
+      "ES.802",
+    ]);
+  });
+
+  it("does not merge different courses that happen to satisfy the same GIR", () => {
+    const { familyByCourseId } = buildCourseFamilies([
+      course("8.02", "Physics II", undefined, "PHY2"),
+      course("CC.802", "Physics II", undefined, "PHY2"),
+      course("24.900", "Ways of Knowing", undefined, "PHY2"),
+    ]);
+
+    expect(familyByCourseId.get("CC.802")).toBe(familyByCourseId.get("8.02"));
+    expect(familyByCourseId.get("24.900")).not.toBe(familyByCourseId.get("8.02"));
   });
 });
