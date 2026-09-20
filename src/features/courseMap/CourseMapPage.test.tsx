@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { RemoteCourse } from "../../domain/types";
 import { buildCourseFamilies } from "../../domain/courseFamilies";
-import { buildPrerequisiteForest, reconcileGraphNodes } from "./CourseMapPage";
+import { buildPrerequisiteForest, layoutGraphWithElk, reconcileGraphNodes } from "./CourseMapPage";
 
 function course(subject_id: string, title: string, prerequisites = ""): RemoteCourse {
   return { subject_id, title, prerequisites, description: "", total_units: 12 };
@@ -155,6 +155,36 @@ describe("course map forest layout", () => {
         expect(overlaps, `${a.id} and ${b.id} should not overlap`).toBe(false);
       }
     }
+  });
+
+  it("uses ELK to give tidy map non-overlapping card positions and routed edges", async () => {
+    const catalog = [
+      course("1.001", "Foundation A"),
+      course("1.002", "Foundation B"),
+      course("1.003", "Alternative destination", "1.001/1.002"),
+      course("1.004", "Direct destination", "1.001"),
+      course("1.005", "Final destination", "1.003, 1.004"),
+    ];
+    const { families } = buildCourseFamilies(catalog);
+    const targets = families.filter((family) => ["1.003", "1.004", "1.005"].includes(family.id));
+    const layout = await layoutGraphWithElk(buildPrerequisiteForest(targets, families));
+    const bounds = layout.nodes.map((node) => ({
+      id: node.id,
+      x: node.position.x,
+      y: node.position.y,
+      width: node.id.startsWith("logic:") ? (node.className?.includes("any") ? 260 : 44) : 210,
+      height: node.id.startsWith("logic:") ? (node.className?.includes("any") ? 110 : 92) : 82,
+    }));
+
+    for (let left = 0; left < bounds.length; left += 1) {
+      for (let right = left + 1; right < bounds.length; right += 1) {
+        const a = bounds[left];
+        const b = bounds[right];
+        const overlaps = a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+        expect(overlaps, `${a.id} and ${b.id} should not overlap after ELK`).toBe(false);
+      }
+    }
+    expect(layout.edges.every((edge) => Array.isArray(edge.data?.elkPoints))).toBe(true);
   });
 
   it("orders connected branches to avoid a needless crossing", () => {
