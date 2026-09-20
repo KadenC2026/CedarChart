@@ -35,6 +35,7 @@ An empty `all` means no listed prerequisites.
 - interestQuery
 - recommendations
 - plannedCourses
+- hiddenMapCourseIds: planned subjects the user chose to hide from the persistent map
 - priorityCourses: subjects the student wants to take, ordered most to least important,
   each marked `required` or `preferred`
 
@@ -46,6 +47,7 @@ An empty `all` means no listed prerequisites.
 - TOGGLE_COMPLETED
 - SET_QUERY
 - SET_RECOMMENDATIONS
+- SET_MAP_COURSE_VISIBILITY
 - ADD_PRIORITY_COURSE
 - REMOVE_PRIORITY_COURSE
 - MOVE_PRIORITY_COURSE

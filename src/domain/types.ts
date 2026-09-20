@@ -89,6 +89,7 @@ export type AppState = {
   careerGoal: string;
   recommendations: InterestSearchResult[];
   plannedCourses: PlannedCourse[];
+  hiddenMapCourseIds: string[];
   priorityCourses: PriorityCourse[];
   selectedRequirementId: string | null;
 };

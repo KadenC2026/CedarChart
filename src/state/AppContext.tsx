@@ -19,6 +19,7 @@ type Action =
   | { type: "ADD_PLANNED_COURSE"; course: PlannedCourse }
   | { type: "REMOVE_PLANNED_COURSE"; courseId: string; term: number }
   | { type: "MOVE_PLANNED_COURSE"; courseId: string; fromTerm: number; toTerm: number }
+  | { type: "SET_MAP_COURSE_VISIBILITY"; courseIds: string[]; visible: boolean }
   | { type: "SET_REQUIREMENT"; requirementId: string | null }
   | { type: "SET_PRIOR_CREDIT"; credit: PriorCredit }
   | { type: "REMOVE_PRIOR_CREDIT"; courseId: string }
@@ -39,6 +40,7 @@ const initialState: AppState = {
   careerGoal: "",
   recommendations: [],
   plannedCourses: [],
+  hiddenMapCourseIds: [],
   priorityCourses: [],
   selectedRequirementId: null,
 };
@@ -70,15 +72,24 @@ export function reducer(state: AppState, action: Action): AppState {
       const exists = state.plannedCourses.some(
         (course) => course.courseId === action.course.courseId && course.term === action.course.term,
       );
-      return exists ? state : { ...state, plannedCourses: [...state.plannedCourses, action.course] };
+      return exists ? state : {
+        ...state,
+        plannedCourses: [...state.plannedCourses, action.course],
+        hiddenMapCourseIds: state.hiddenMapCourseIds.filter((id) => id !== action.course.courseId),
+      };
     }
-    case "REMOVE_PLANNED_COURSE":
+    case "REMOVE_PLANNED_COURSE": {
+      const plannedCourses = state.plannedCourses.filter(
+        (course) => !(course.courseId === action.courseId && course.term === action.term),
+      );
       return {
         ...state,
-        plannedCourses: state.plannedCourses.filter(
-          (course) => !(course.courseId === action.courseId && course.term === action.term),
-        ),
+        plannedCourses,
+        hiddenMapCourseIds: plannedCourses.some((course) => course.courseId === action.courseId)
+          ? state.hiddenMapCourseIds
+          : state.hiddenMapCourseIds.filter((id) => id !== action.courseId),
       };
+    }
     case "MOVE_PLANNED_COURSE":
       return {
         ...state,
@@ -88,6 +99,15 @@ export function reducer(state: AppState, action: Action): AppState {
             : course,
         ),
       };
+    case "SET_MAP_COURSE_VISIBILITY": {
+      const affected = new Set(action.courseIds);
+      return {
+        ...state,
+        hiddenMapCourseIds: action.visible
+          ? state.hiddenMapCourseIds.filter((id) => !affected.has(id))
+          : [...new Set([...state.hiddenMapCourseIds, ...action.courseIds])],
+      };
+    }
     case "SET_REQUIREMENT":
       return { ...state, selectedRequirementId: action.requirementId };
     case "SET_PRIOR_CREDIT":

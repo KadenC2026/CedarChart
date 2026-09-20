@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { reducer } from "./AppContext";
 import { earnedCourseIds } from "../domain/requirements";
 import type { AppState } from "../domain/types";
-const initial: AppState = { completedCourseIds: [], priorCredits: [], selectedCourseId: null, highlightedCourseIds: [], targetCourseId: null, interestQuery: "", careerGoal: "", recommendations: [], plannedCourses: [], priorityCourses: [], selectedRequirementId: null };
+const initial: AppState = { completedCourseIds: [], priorCredits: [], selectedCourseId: null, highlightedCourseIds: [], targetCourseId: null, interestQuery: "", careerGoal: "", recommendations: [], plannedCourses: [], hiddenMapCourseIds: [], priorityCourses: [], selectedRequirementId: null };
 describe("shared credit state", () => {
   it("does not treat scheduled classes as earned", () => {
     const state = reducer(initial, { type: "ADD_PLANNED_COURSE", course: { courseId: "18.01", title: "Calculus", term: 0 } });
@@ -62,5 +62,23 @@ describe("priority list state", () => {
 
     state = reducer(state, { type: "CLEAR_PRIORITY_COURSES" });
     expect(state.priorityCourses).toEqual([]);
+  });
+});
+
+describe("persistent map courses", () => {
+  it("hides a scheduled course without removing it from the plan", () => {
+    let state = reducer(initial, { type: "ADD_PLANNED_COURSE", course: { courseId: "6.3900", title: "Introduction to Machine Learning", term: 0 } });
+    state = reducer(state, { type: "SET_MAP_COURSE_VISIBILITY", courseIds: ["6.3900"], visible: false });
+    expect(state.plannedCourses).toHaveLength(1);
+    expect(state.hiddenMapCourseIds).toEqual(["6.3900"]);
+
+    state = reducer(state, { type: "SET_MAP_COURSE_VISIBILITY", courseIds: ["6.3900"], visible: true });
+    expect(state.hiddenMapCourseIds).toEqual([]);
+  });
+
+  it("repins a hidden course when it is newly added again", () => {
+    let state = reducer(initial, { type: "SET_MAP_COURSE_VISIBILITY", courseIds: ["18.06"], visible: false });
+    state = reducer(state, { type: "ADD_PLANNED_COURSE", course: { courseId: "18.06", title: "Linear Algebra", term: 1 } });
+    expect(state.hiddenMapCourseIds).toEqual([]);
   });
 });

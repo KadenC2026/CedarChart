@@ -533,6 +533,23 @@ button:disabled { cursor: default; opacity: .65; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.course-map-hidden-courses {
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.course-map-hidden-courses > div { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; margin-top: 8px; }
+.course-map-hidden-courses button,
+.course-map-restore-course {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: white;
+  color: var(--green);
+  padding: 6px 9px;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
 
 .course-map-shell {
   position: relative;
@@ -715,6 +732,23 @@ button:disabled { cursor: default; opacity: .65; }
   font-size: 12px;
 }
 .course-map-legend span { color: var(--muted); }
+.course-map-pinned-tray {
+  position: absolute;
+  z-index: 15;
+  top: 76px;
+  right: 18px;
+  max-width: min(420px, calc(100vw - 36px));
+  padding: 10px 12px;
+  border: 1px solid rgba(221,216,205,.85);
+  border-radius: 12px;
+  background: rgba(255,253,248,.94);
+  box-shadow: 0 1px 6px rgba(0,0,0,.14);
+}
+.course-map-pinned-tray > strong { display: block; margin-bottom: 7px; color: var(--muted); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.course-map-pinned-tray > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.course-map-pinned-course { display: inline-flex; overflow: hidden; border: 1px solid #bfd1c1; border-radius: 999px; background: var(--green-soft); }
+.course-map-pinned-course button { border: 0; background: transparent; color: var(--green); padding: 6px 3px 6px 9px; font-size: 12px; font-weight: 800; cursor: pointer; }
+.course-map-pinned-course button:last-child { padding: 6px 8px 6px 4px; color: var(--muted); }
 .course-map-loading {
   height: calc(100vh - 72px);
   display: grid;
@@ -746,6 +780,12 @@ button:disabled { cursor: default; opacity: .65; }
     top: auto;
     bottom: 12px;
     max-height: 45vh;
+  }
+  .course-map-pinned-tray {
+    top: 74px;
+    right: 12px;
+    left: 12px;
+    max-width: none;
   }
   .course-map-legend { display: none; }
 }

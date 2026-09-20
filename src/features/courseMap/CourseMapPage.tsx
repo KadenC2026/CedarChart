@@ -141,6 +141,44 @@ function buildPrerequisiteGraph(target: CourseFamily, families: CourseFamily[]):
   return { nodes, edges, familyByNodeId };
 }
 
+function buildPrerequisiteForest(targets: CourseFamily[], families: CourseFamily[]): GraphData {
+  const nodes: Node[] = [];
+  const edges: Edge[] = [];
+  const familyByNodeId = new Map<string, CourseFamily>();
+  let nextTreeX = 0;
+
+  for (const target of targets) {
+    const tree = buildPrerequisiteGraph(target, families);
+    const xs = tree.nodes.map((node) => node.position.x);
+    const minX = Math.min(...xs, 0);
+    const maxX = Math.max(...xs, 0);
+    const prefix = target.id + "::";
+
+    for (const node of tree.nodes) {
+      const id = prefix + node.id;
+      nodes.push({
+        ...node,
+        id,
+        position: { ...node.position, x: node.position.x - minX + nextTreeX },
+      });
+      familyByNodeId.set(id, tree.familyByNodeId.get(node.id)!);
+    }
+
+    for (const edge of tree.edges) {
+      edges.push({
+        ...edge,
+        id: prefix + edge.id,
+        source: prefix + edge.source,
+        target: prefix + edge.target,
+      });
+    }
+
+    nextTreeX += maxX - minX + 430;
+  }
+
+  return { nodes, edges, familyByNodeId };
+}
+
 export default function CourseMapPage() {
   const { data, error, retry } = useCatalog();
   const { state, dispatch } = useApp();
@@ -173,14 +211,45 @@ export default function CourseMapPage() {
     ? families.find((family) => family.id === targetFamilyId)
     : undefined;
 
+  const scheduledCourseIds = useMemo(
+    () => [...new Set(state.plannedCourses.map((course) => localId(course.courseId)))],
+    [state.plannedCourses],
+  );
+  const scheduledCourseIdSet = useMemo(() => new Set(scheduledCourseIds), [scheduledCourseIds]);
+  const hiddenMapCourseIdSet = useMemo(
+    () => new Set(state.hiddenMapCourseIds),
+    [state.hiddenMapCourseIds],
+  );
+  const plannedMapFamilies = useMemo(() => {
+    const byId = new Map<string, CourseFamily>();
+    for (const courseId of scheduledCourseIds) {
+      if (hiddenMapCourseIdSet.has(courseId)) continue;
+      const family = familyByCourseId.get(courseId);
+      if (family) byId.set(family.id, family);
+    }
+    return [...byId.values()];
+  }, [scheduledCourseIds, hiddenMapCourseIdSet, familyByCourseId]);
+  const graphTargets = useMemo(() => {
+    const roots = [...plannedMapFamilies];
+    if (target && !roots.some((family) => family.id === target.id)) roots.push(target);
+    return roots;
+  }, [plannedMapFamilies, target]);
+  const hiddenScheduledCourses = useMemo(
+    () => scheduledCourseIds
+      .filter((courseId) => hiddenMapCourseIdSet.has(courseId))
+      .map((courseId) => catalog.find((course) => course.subject_id === courseId))
+      .filter((course): course is RemoteCourse => Boolean(course)),
+    [scheduledCourseIds, hiddenMapCourseIdSet, catalog],
+  );
+
   const graph = useMemo(
-    () => (target ? buildPrerequisiteGraph(target, families) : null),
-    [target, families],
+    () => (graphTargets.length ? buildPrerequisiteForest(graphTargets, families) : null),
+    [graphTargets, families],
   );
 
   const selected =
-    selectedFamilyId && graph
-      ? graph.familyByNodeId.get(selectedFamilyId)
+    selectedFamilyId
+      ? families.find((family) => family.id === selectedFamilyId)
       : undefined;
   const plannedTerms = selected ? plannedTermsFor(selected) : [];
   const selectedCourseWebsite = selected ? courseWebsiteFor(selected.primary.subject_id) : undefined;
@@ -237,8 +306,16 @@ export default function CourseMapPage() {
 
   function plannedTermsFor(family: CourseFamily) {
     return state.plannedCourses
-      .filter((course) => localId(course.courseId) === family.primary.subject_id)
+      .filter((course) => family.members.some((member) => member.subject_id === localId(course.courseId)))
       .map((course) => termLabel(course.term));
+  }
+
+  function setFamilyMapVisibility(family: CourseFamily, visible: boolean) {
+    const courseIds = family.members
+      .map((member) => member.subject_id)
+      .filter((courseId) => scheduledCourseIdSet.has(courseId));
+    dispatch({ type: "SET_MAP_COURSE_VISIBILITY", courseIds, visible });
+    if (!visible && selectedFamilyId === family.id) setSelectedFamilyId(null);
   }
 
   function resetSearch() {
@@ -370,7 +447,7 @@ export default function CourseMapPage() {
     return <section className="course-map-loading">Loading MIT course data…</section>;
   }
 
-  if (!target || !graph) {
+  if (!graph) {
     return (
       <section className="course-map-home">
         <div className="course-map-home-inner">
@@ -396,6 +473,22 @@ export default function CourseMapPage() {
 
           <p>{mapSearchLoading ? "AI is matching your request…" : "Search any MIT subject or interest to explore its prerequisite map."}</p>
           {mapSearchNote && <p className="method-note">{mapSearchNote}</p>}
+
+          {hiddenScheduledCourses.length > 0 && (
+            <div className="course-map-hidden-courses">
+              <span>Hidden scheduled courses</span>
+              <div>
+                {hiddenScheduledCourses.map((course) => (
+                  <button
+                    key={course.subject_id}
+                    onClick={() => dispatch({ type: "SET_MAP_COURSE_VISIBILITY", courseIds: [course.subject_id], visible: true })}
+                  >
+                    + {course.subject_id}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {suggestions.length > 0 && (
             <div className="course-map-suggestions">
@@ -439,7 +532,7 @@ export default function CourseMapPage() {
 
       <div className="course-map-canvas">
         <ReactFlow
-          key={target.id}
+          key={graphTargets.map((family) => family.id).join("|")}
           nodes={graph.nodes}
           edges={graph.edges}
           fitView
@@ -452,13 +545,36 @@ export default function CourseMapPage() {
           zoomOnPinch
           minZoom={0.08}
           maxZoom={2.2}
-          onNodeClick={(_, node) => setSelectedFamilyId(node.id)}
+          onNodeClick={(_, node) => setSelectedFamilyId(graph.familyByNodeId.get(node.id)?.id ?? null)}
         >
           <Background gap={28} />
           <Controls showInteractive={false} />
           <MiniMap pannable zoomable />
         </ReactFlow>
       </div>
+
+      {(plannedMapFamilies.length > 0 || hiddenScheduledCourses.length > 0) && (
+        <div className="course-map-pinned-tray">
+          <strong>Scheduled on map</strong>
+          <div>
+            {plannedMapFamilies.map((family) => (
+              <span className="course-map-pinned-course" key={family.id}>
+                <button onClick={() => setSelectedFamilyId(family.id)}>{family.label}</button>
+                <button onClick={() => setFamilyMapVisibility(family, false)} aria-label={`Hide ${family.label} from map`}>×</button>
+              </span>
+            ))}
+            {hiddenScheduledCourses.map((course) => (
+              <button
+                className="course-map-restore-course"
+                key={course.subject_id}
+                onClick={() => dispatch({ type: "SET_MAP_COURSE_VISIBILITY", courseIds: [course.subject_id], visible: true })}
+              >
+                + {course.subject_id}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {selected && (
         <aside className="course-map-info-card">
@@ -615,7 +731,12 @@ export default function CourseMapPage() {
           </div>
 
           {plannedTerms.length > 0 && (
-            <p className="data-note">Already in your plan: {plannedTerms.join(", ")}</p>
+            <>
+              <p className="data-note">Already in your plan: {plannedTerms.join(", ")}</p>
+              <button className="secondary-button" onClick={() => setFamilyMapVisibility(selected, false)}>
+                Hide scheduled course from map
+              </button>
+            </>
           )}
 
           <div className="course-map-external-links">
@@ -635,7 +756,7 @@ export default function CourseMapPage() {
       )}
 
       <div className="course-map-legend">
-        <strong>{target.label}</strong>
+        <strong>{graphTargets.length} course tree{graphTargets.length === 1 ? "" : "s"}</strong>
         <span>{graph.nodes.length} course families in prerequisite map</span>
       </div>
     </section>
