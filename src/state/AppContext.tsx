@@ -24,6 +24,7 @@ type Action =
   | { type: "SET_RECOMMENDATIONS"; results: InterestSearchResult[] }
   | { type: "ADD_PLANNED_COURSE"; course: PlannedCourse }
   | { type: "REMOVE_PLANNED_COURSE"; courseId: string; term: number }
+  | { type: "REPLACE_PLANNED_COURSE"; courseId: string; term: number; replacement: PlannedCourse }
   | { type: "MOVE_PLANNED_COURSE"; courseId: string; fromTerm: number; toTerm: number }
   | { type: "SET_MAP_COURSE_VISIBILITY"; courseIds: string[]; visible: boolean }
   | { type: "SET_REQUIREMENT"; requirementId: string | null }
@@ -101,6 +102,26 @@ export function reducer(state: AppState, action: Action): AppState {
         hiddenMapCourseIds: plannedCourses.some((course) => course.courseId === action.courseId)
           ? state.hiddenMapCourseIds
           : state.hiddenMapCourseIds.filter((id) => id !== action.courseId),
+      };
+    }
+    case "REPLACE_PLANNED_COURSE": {
+      const original = state.plannedCourses.find(
+        (course) => course.courseId === action.courseId && course.term === action.term,
+      );
+      if (!original || original.courseId === action.replacement.courseId) return state;
+      if (state.plannedCourses.some(
+        (course) => course.courseId === action.replacement.courseId && course.term === action.term,
+      )) return state;
+      const plannedCourses = state.plannedCourses.map((course) =>
+        course === original ? action.replacement : course,
+      );
+      const originalStillPlanned = plannedCourses.some((course) => course.courseId === original.courseId);
+      return {
+        ...state,
+        plannedCourses,
+        hiddenMapCourseIds: state.hiddenMapCourseIds
+          .filter((id) => id !== action.replacement.courseId)
+          .filter((id) => originalStillPlanned || id !== original.courseId),
       };
     }
     case "MOVE_PLANNED_COURSE":

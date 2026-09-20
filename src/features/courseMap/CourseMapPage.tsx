@@ -63,6 +63,47 @@ type RoutedEdgeData = {
 
 type RoutedEdge = Edge<RoutedEdgeData, "routed">;
 
+function orderLayersToReduceCrossings(
+  layers: Map<number, string[]>,
+  edges: Edge[],
+  labelFor: (id: string) => string,
+) {
+  const orderedLayers = [...layers.entries()].sort(([a], [b]) => a - b);
+  for (const [, ids] of orderedLayers) ids.sort((a, b) => labelFor(a).localeCompare(labelFor(b), undefined, { numeric: true }));
+
+  const orderByNeighbors = (layerIndex: number, direction: -1 | 1) => {
+    const [, ids] = orderedLayers[layerIndex];
+    const reference = new Map<string, number>();
+    for (let index = layerIndex + direction; index >= 0 && index < orderedLayers.length; index += direction) {
+      const [, referenceIds] = orderedLayers[index];
+      referenceIds.forEach((id, position) => reference.set(id, position));
+    }
+    const currentIndex = new Map(ids.map((id, index) => [id, index]));
+    ids.sort((a, b) => {
+      const neighborPositions = (id: string) => edges
+        .flatMap((edge) => edge.source === id ? [edge.target] : edge.target === id ? [edge.source] : [])
+        .flatMap((neighbor) => reference.has(neighbor) ? [reference.get(neighbor)!] : []);
+      const average = (values: number[], fallback: number) =>
+        values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : fallback;
+      const aPositions = neighborPositions(a);
+      const bPositions = neighborPositions(b);
+      const difference = average(aPositions, currentIndex.get(a) ?? 0) - average(bPositions, currentIndex.get(b) ?? 0);
+      if (difference) return difference;
+      // Preserve a useful ordering from the opposite sweep when both branches
+      // meet the same neighbor; alphabetical tie-breaking would reintroduce a crossing.
+      if (aPositions.length && bPositions.length) return 0;
+      return labelFor(a).localeCompare(labelFor(b), undefined, { numeric: true });
+    });
+  };
+
+  // Alternating barycentric sweeps preserve deterministic ordering while placing
+  // connected branches beside one another, removing avoidable arrow crossings.
+  for (let pass = 0; pass < 3; pass += 1) {
+    for (let index = 1; index < orderedLayers.length; index += 1) orderByNeighbors(index, -1);
+    for (let index = orderedLayers.length - 2; index >= 0; index -= 1) orderByNeighbors(index, 1);
+  }
+}
+
 function roundedPath(points: Array<{ x: number; y: number }>, cornerRadius = 14) {
   const cleaned = points.filter((point, index) =>
     index === 0 || point.x !== points[index - 1].x || point.y !== points[index - 1].y,
@@ -428,12 +469,11 @@ export function buildPrerequisiteForest(
       const layer = horizontalPosition(id);
       layers.set(layer, [...(layers.get(layer) ?? []), id]);
     }
-    for (const layer of layers.values()) {
-      layer.sort((a, b) =>
-        (familyByNodeId.get(a)?.label ?? logicByNodeId.get(a)?.kind ?? a)
-          .localeCompare(familyByNodeId.get(b)?.label ?? logicByNodeId.get(b)?.kind ?? b, undefined, { numeric: true }),
-      );
-    }
+    orderLayersToReduceCrossings(
+      layers,
+      componentEdges,
+      (id) => familyByNodeId.get(id)?.label ?? logicByNodeId.get(id)?.kind ?? id,
+    );
 
     const estimatedNodeHeight = (id: string) => {
       const logic = logicByNodeId.get(id);
@@ -638,6 +678,8 @@ export default function CourseMapPage() {
   const [targetFamilyId, setTargetFamilyId] = useState<string | null>(null);
   const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null);
   const [scheduleTerm, setScheduleTerm] = useState(0);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [layoutVersion, setLayoutVersion] = useState(0);
   const [nextCourseResults, setNextCourseResults] = useState<Array<NextCourseRecommendation & { explanation?: string; method?: string }>>([]);
   const [nextCourseLoading, setNextCourseLoading] = useState(false);
   const [mapSearchLoading, setMapSearchLoading] = useState(false);
@@ -745,7 +787,7 @@ export default function CourseMapPage() {
       if (!graph) return [];
       return reconcileGraphNodes(graph, current, draggedPositionsRef.current);
     });
-  }, [graph, setFlowNodes]);
+  }, [graph, layoutVersion, setFlowNodes]);
 
   const selected =
     selectedFamilyId
@@ -754,6 +796,17 @@ export default function CourseMapPage() {
   const plannedTerms = selected ? plannedTermsFor(selected) : [];
   const selectedCreditLabel = selected ? creditLabelByFamilyId.get(selected.id) : undefined;
   const selectedCourseWebsite = selected ? courseWebsiteFor(selected.primary.subject_id) : undefined;
+
+  useEffect(() => {
+    if (!selected) {
+      setSelectedVariantId(null);
+      return;
+    }
+    const plannedVariant = state.plannedCourses.find(
+      (course) => course.term === scheduleTerm && selected.members.some((member) => member.subject_id === localId(course.courseId)),
+    );
+    setSelectedVariantId(localId(plannedVariant?.courseId ?? selected.primary.subject_id));
+  }, [selectedFamilyId, scheduleTerm, selected, state.plannedCourses]);
 
   function chooseFamily(family: CourseFamily) {
     setQuery(family.label);
@@ -850,7 +903,7 @@ export default function CourseMapPage() {
       }));
       return;
     }
-    const course = selected.primary;
+    const course = selected.members.find((member) => member.subject_id === selectedVariantId) ?? selected.primary;
     dispatch({
       type: "ADD_PLANNED_COURSE",
       course: {
@@ -869,6 +922,32 @@ export default function CourseMapPage() {
         selected.members.some((member) => member.subject_id === localId(course.courseId)) &&
         course.term === scheduleTerm,
     );
+  }
+
+  function chooseSelectedVariant(courseId: string) {
+    if (!selected) return;
+    setSelectedVariantId(courseId);
+    const replacement = selected.members.find((member) => member.subject_id === courseId);
+    const planned = state.plannedCourses.find(
+      (course) => course.term === scheduleTerm && selected.members.some((member) => member.subject_id === localId(course.courseId)),
+    );
+    if (!replacement || !planned) return;
+    dispatch({
+      type: "REPLACE_PLANNED_COURSE",
+      courseId: planned.courseId,
+      term: scheduleTerm,
+      replacement: {
+        courseId: replacement.subject_id,
+        title: replacement.title,
+        units: replacement.total_units,
+        term: scheduleTerm,
+      },
+    });
+  }
+
+  function tidyMap() {
+    draggedPositionsRef.current.clear();
+    setLayoutVersion((version) => version + 1);
   }
 
   async function findLogicalNextCourses() {
@@ -1061,6 +1140,9 @@ export default function CourseMapPage() {
           onChoose={chooseFamily}
           compact
         />
+        <button className="course-map-tidy-button" type="button" onClick={tidyMap}>
+          ✦ Tidy map
+        </button>
       </div>
 
       <div className="course-map-canvas">
@@ -1136,14 +1218,20 @@ export default function CourseMapPage() {
 
           {selected.members.length > 1 && (
             <div className="course-family-variants">
-              <span>Combined variants</span>
-              <div>
+              <label htmlFor="course-map-variant">Course option</label>
+              <select
+                id="course-map-variant"
+                aria-label={`Choose replacement for ${selected.label}`}
+                value={selectedVariantId ?? selected.primary.subject_id}
+                onChange={(event) => chooseSelectedVariant(event.target.value)}
+              >
                 {selected.members.map((course) => (
-                  <span className="course-family-chip" key={course.subject_id}>
-                    {course.subject_id}
-                  </span>
+                  <option value={course.subject_id} key={course.subject_id}>
+                    {course.subject_id} · {course.title}
+                  </option>
                 ))}
-              </div>
+              </select>
+              <small>Changing this replaces the scheduled option for this term.</small>
             </div>
           )}
 

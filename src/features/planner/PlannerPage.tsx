@@ -10,6 +10,7 @@ import { plannerTerms as terms, termColorClass } from "../../domain/terms";
 import { useApp } from "../../state/AppContext";
 import { requestCourseRecommendations, type GroundedCourseRecommendation } from "../../domain/aiCourseSearch";
 import PetitionAdvisor from "./PetitionAdvisor";
+import { buildCourseFamilies } from "../../domain/courseFamilies";
 
 
 export default function PlannerPage() {
@@ -28,6 +29,7 @@ export default function PlannerPage() {
   const earned = earnedCourseIds(state);
   const planned = new Set(state.plannedCourses.map(c => localId(c.courseId)));
   const catalogMap = useMemo(() => new Map(catalog.map(c => [c.subject_id, c])), [catalog]);
+  const { familyByCourseId } = useMemo(() => buildCourseFamilies(catalog), [catalog]);
   const priorCreditCourses = state.priorCredits.map((credit) => ({
     credit,
     course: catalogMap.get(localId(credit.courseId)),
@@ -226,6 +228,38 @@ export default function PlannerPage() {
                           <strong>{course.courseId}</strong>
                           <span>{course.title}</span>
                         </button>
+                        {(familyByCourseId.get(localId(course.courseId))?.members.length ?? 0) > 1 && (
+                          <label className="planned-variant-picker">
+                            <span className="visually-hidden">Choose replacement for {course.courseId}</span>
+                            <select
+                              aria-label={`Choose replacement for ${course.courseId}`}
+                              value={localId(course.courseId)}
+                              onChange={(event) => {
+                                const replacement = familyByCourseId.get(localId(course.courseId))?.members.find(
+                                  (member) => member.subject_id === event.target.value,
+                                );
+                                if (!replacement) return;
+                                dispatch({
+                                  type: "REPLACE_PLANNED_COURSE",
+                                  courseId: course.courseId,
+                                  term: termIndex,
+                                  replacement: {
+                                    courseId: replacement.subject_id,
+                                    title: replacement.title,
+                                    units: replacement.total_units,
+                                    term: termIndex,
+                                  },
+                                });
+                              }}
+                            >
+                              {familyByCourseId.get(localId(course.courseId))!.members.map((member) => (
+                                <option value={member.subject_id} key={member.subject_id}>
+                                  {member.subject_id} · {member.title}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        )}
                         <label className="planned-completed" title="Mark completed"><input type="checkbox" aria-label={`Completed ${course.courseId}`} checked={earned.has(localId(course.courseId))}
                           disabled={state.priorCredits.some(c => localId(c.courseId) === localId(course.courseId))}
                           onChange={() => dispatch({ type: "TOGGLE_COMPLETED", courseId: `mit:${localId(course.courseId)}` })} /></label>

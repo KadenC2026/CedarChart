@@ -92,6 +92,23 @@ describe("course map forest layout", () => {
     expect(adjacentEdge?.data?.routeLaneOffset).toBeUndefined();
   });
 
+  it("orders connected branches to avoid a needless crossing", () => {
+    const catalog = [
+      course("1.001", "Alpha"),
+      course("1.002", "Beta"),
+      course("1.003", "Branch from beta", "1.002"),
+      course("1.004", "Branch from alpha", "1.001"),
+      course("1.005", "Destination", "1.003, 1.004"),
+    ];
+    const { families } = buildCourseFamilies(catalog);
+    const targets = families.filter((family) => ["1.003", "1.004", "1.005"].includes(family.id));
+    const graph = buildPrerequisiteForest(targets, families);
+    const positions = new Map(graph.nodes.map((node) => [node.id, node.position]));
+
+    // Alpha is above Beta, so its dependent is placed above Beta's dependent.
+    expect(positions.get("1.004")!.y).toBeLessThan(positions.get("1.003")!.y);
+  });
+
   it("groups OR prerequisites inside one choice container", () => {
     const catalog = [
       course("1.001", "Option A"),

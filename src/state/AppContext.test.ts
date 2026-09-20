@@ -87,3 +87,19 @@ describe("persistent map courses", () => {
     expect(state.hiddenMapCourseIds).toEqual([]);
   });
 });
+
+describe("planned course variants", () => {
+  it("replaces a planned variant in place and makes the replacement visible on the map", () => {
+    let state = reducer(initial, { type: "ADD_PLANNED_COURSE", course: { courseId: "18.10A", title: "Analysis A", term: 2 } });
+    state = reducer(state, { type: "SET_MAP_COURSE_VISIBILITY", courseIds: ["18.100A"], visible: false });
+    state = reducer(state, {
+      type: "REPLACE_PLANNED_COURSE",
+      courseId: "18.10A",
+      term: 2,
+      replacement: { courseId: "18.100A", title: "Real Analysis", term: 2 },
+    });
+
+    expect(state.plannedCourses).toEqual([{ courseId: "18.100A", title: "Real Analysis", term: 2 }]);
+    expect(state.hiddenMapCourseIds).toEqual([]);
+  });
+});
