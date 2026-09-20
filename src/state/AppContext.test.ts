@@ -27,7 +27,7 @@ describe("shared credit state", () => {
 });
 
 describe("instructor permission state", () => {
-  it("records and removes only an explicit instructor approval", () => {
+  it("records and removes only an explicit instructor-permission waiver", () => {
     let state = reducer(initial, { type: "TOGGLE_INSTRUCTOR_PERMISSION", courseId: "mit:6.1910" });
     expect(state.instructorPermissionCourseIds).toEqual(["mit:6.1910"]);
     state = reducer(state, { type: "TOGGLE_INSTRUCTOR_PERMISSION", courseId: "mit:6.1910" });

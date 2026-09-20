@@ -35,7 +35,7 @@ An empty `all` means no listed prerequisites.
 - interestQuery
 - recommendations
 - plannedCourses
-- instructorPermissionCourseIds (explicit student-recorded approval only; never inferred)
+- instructorPermissionCourseIds (explicit student-recorded instructor permission to waive prerequisites; never inferred)
 - hiddenMapCourseIds: planned subjects the user chose to hide from the persistent map
 - priorityCourses: subjects the student wants to take, ordered most to least important,
   each marked `required` or `preferred`

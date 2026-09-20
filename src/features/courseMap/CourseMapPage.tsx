@@ -1050,9 +1050,6 @@ export default function CourseMapPage() {
   const plannedTerms = selected ? plannedTermsFor(selected) : [];
   const selectedCreditLabel = selected ? creditLabelByFamilyId.get(selected.id) : undefined;
   const selectedCourseWebsite = selected ? courseWebsiteFor(selected.primary.subject_id) : undefined;
-  const selectedRequiresInstructorPermission = Boolean(
-    selected && /(?:permission of (?:the )?instructor|instructor permission)/i.test(selected.primary.prerequisites ?? ""),
-  );
   const selectedPermissionRecorded = Boolean(
     selected && state.instructorPermissionCourseIds.includes(`mit:${selected.primary.subject_id}`),
   );
@@ -1533,6 +1530,27 @@ export default function CourseMapPage() {
             </div>
           </div>
 
+          <div className="course-map-rule">
+            <span>Prerequisites</span>
+            <p>{selected.primary.prerequisites || "No listed prerequisites."}</p>
+          </div>
+
+          <div className="course-map-permission">
+            <label>
+              <input
+                type="checkbox"
+                checked={selectedPermissionRecorded}
+                onChange={() => dispatch({
+                  type: "TOGGLE_INSTRUCTOR_PERMISSION",
+                  courseId: `mit:${selected.primary.subject_id}`,
+                })}
+              />
+              I have instructor permission to waive prerequisites
+            </label>
+            <p>
+              Use this only after an instructor has approved an exception. It records your planning assumption; it does not enroll you or replace the department&apos;s approval process.
+            </p>
+          </div>
 
           <div className="course-next-panel">
             <div className="course-next-heading">
@@ -1607,30 +1625,6 @@ export default function CourseMapPage() {
               </div>
             )}
           </div>
-
-          <div className="course-map-rule">
-            <span>Prerequisites</span>
-            <p>{selected.primary.prerequisites || "No listed prerequisites."}</p>
-          </div>
-
-          {selectedRequiresInstructorPermission && (
-            <div className="course-map-permission">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={selectedPermissionRecorded}
-                  onChange={() => dispatch({
-                    type: "TOGGLE_INSTRUCTOR_PERMISSION",
-                    courseId: `mit:${selected.primary.subject_id}`,
-                  })}
-                />
-                I have instructor permission for this course
-              </label>
-              <p>
-                This records your confirmation for planning. It does not enroll you or replace the department&apos;s approval process.
-              </p>
-            </div>
-          )}
 
           {selected.primary.corequisites && (
             <div className="course-map-rule">
