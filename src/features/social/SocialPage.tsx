@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { clubSpotlights } from "../../data/clubSpotlights";
 import { courseWebsiteFor } from "../../data/courseSites";
-import { recommendSocialThemes } from "../../domain/socialRecommendations";
+import { recommendClubs } from "../../domain/socialRecommendations";
 import { termLabel } from "../../domain/terms";
 import { useApp } from "../../state/AppContext";
 
@@ -9,6 +10,8 @@ const PSET_PARTNERS_URL = "https://psetpartners.mit.edu/";
 
 export default function SocialPage() {
   const { state } = useApp();
+  const [spotlightIndex, setSpotlightIndex] = useState(0);
+  const [carouselPaused, setCarouselPaused] = useState(false);
   const planned = useMemo(
     () => [...state.plannedCourses].sort((a, b) => a.term - b.term || a.courseId.localeCompare(b.courseId)),
     [state.plannedCourses],
@@ -17,13 +20,28 @@ export default function SocialPage() {
     () => [...new Map(planned.map((course) => [course.courseId, course])).values()],
     [planned],
   );
-  const clubThemes = useMemo(() => recommendSocialThemes({
+  const clubs = useMemo(() => recommendClubs({
     interestQuery: state.interestQuery,
     plannedCourses: planned,
-    limit: 4,
+    matchLimit: 4,
+    surpriseLimit: 2,
   }), [planned, state.interestQuery]);
 
   const hasProfile = Boolean(state.interestQuery.trim() || planned.length);
+  const spotlight = clubSpotlights[spotlightIndex];
+
+  useEffect(() => {
+    if (carouselPaused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(
+      () => setSpotlightIndex((current) => (current + 1) % clubSpotlights.length),
+      6500,
+    );
+    return () => window.clearInterval(timer);
+  }, [carouselPaused]);
+
+  const changeSpotlight = (direction: number) => {
+    setSpotlightIndex((current) => (current + direction + clubSpotlights.length) % clubSpotlights.length);
+  };
 
   return (
     <section className="page social-page">
@@ -32,6 +50,43 @@ export default function SocialPage() {
       <p className="lede">
         cedar uses your plan and interests to point you toward classmates, course communities, and clubs.
       </p>
+
+      <section
+        className="club-carousel"
+        aria-label="Featured MIT clubs"
+        onMouseEnter={() => setCarouselPaused(true)}
+        onMouseLeave={() => setCarouselPaused(false)}
+        onFocus={() => setCarouselPaused(true)}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) setCarouselPaused(false);
+        }}
+      >
+        <img src={spotlight.imageUrl} alt={`Students and projects from ${spotlight.club}`} />
+        <div className="club-carousel-shade" />
+        <div className="club-carousel-caption">
+          <span className="social-card-kicker">Club spotlight · {spotlightIndex + 1} of {clubSpotlights.length}</span>
+          <h2>{spotlight.club}</h2>
+          <p>{spotlight.caption}</p>
+          <a href={spotlight.clubUrl} target="_blank" rel="noreferrer">Explore this club ↗</a>
+          <small>Photo from {spotlight.imageSource}’s official website</small>
+        </div>
+        <div className="club-carousel-controls">
+          <button type="button" aria-label="Previous club" onClick={() => changeSpotlight(-1)}>←</button>
+          <div className="club-carousel-dots" aria-label="Choose a club spotlight">
+            {clubSpotlights.map((item, index) => (
+              <button
+                key={`${item.club}-${index}`}
+                type="button"
+                className={index === spotlightIndex ? "active" : ""}
+                aria-label={`Show ${item.club}`}
+                aria-current={index === spotlightIndex ? "true" : undefined}
+                onClick={() => setSpotlightIndex(index)}
+              />
+            ))}
+          </div>
+          <button type="button" aria-label="Next club" onClick={() => changeSpotlight(1)}>→</button>
+        </div>
+      </section>
 
       <div className="social-context-bar">
         <div>
@@ -93,24 +148,37 @@ export default function SocialPage() {
       <div className="social-section-heading">
         <div>
           <span className="social-card-kicker">Clubs for you</span>
-          <h2>Explore communities that match your interests</h2>
+          <h2>Meet clubs picked for you</h2>
         </div>
         <a href="https://studentlife.mit.edu/campus-communities/student-activities/" target="_blank" rel="noreferrer">
           MIT Student Activities ↗
         </a>
       </div>
-      <div className="social-theme-grid">
-        {clubThemes.map((theme) => (
-          <article className="social-theme-card" key={theme.id}>
-            <h3>{theme.title}</h3>
-            <p>{theme.description}</p>
-            <small>{theme.reason}</small>
-            <div className="social-search-terms">
-              {theme.searchTerms.map((term) => <span key={term}>{term}</span>)}
+      <div className="social-club-grid">
+        {clubs.map((club) => (
+          <article className="social-club-card" key={club.id}>
+            <div className="social-club-topline">
+              <span className="social-club-icon" aria-hidden="true">{club.icon}</span>
+              <span className={`social-club-badge ${club.kind}`}>
+                {club.kind === "surprise" ? "Surprise pick" : "For you"}
+              </span>
             </div>
-            <a href={theme.url} target="_blank" rel="noreferrer">{theme.sourceLabel} ↗</a>
+            <h3>{club.name}</h3>
+            <p>{club.description}</p>
+            <small>{club.reason}</small>
+            <a href={club.url} target="_blank" rel="noreferrer">{club.linkLabel} ↗</a>
           </article>
         ))}
+      </div>
+
+      <div className="social-browse-all">
+        <div>
+          <strong>Still exploring?</strong>
+          <span>MIT Engage lists hundreds of student organizations, events, and officer contacts.</span>
+        </div>
+        <a className="secondary-button link-button" href="https://engage.mit.edu/club_signup?view=all" target="_blank" rel="noreferrer">
+          Browse every group ↗
+        </a>
       </div>
 
       <p className="social-privacy-note">

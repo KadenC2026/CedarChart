@@ -1,4 +1,10 @@
 import type { PlannedCourse } from "./types";
+import { mitClubs, type MitClub } from "../data/mitClubs";
+
+export type ClubRecommendation = MitClub & {
+  kind: "match" | "surprise";
+  reason: string;
+};
 
 export type SocialTheme = {
   id: string;
@@ -96,6 +102,60 @@ function tokens(value: string) {
 
 function coursePrefix(courseId: string) {
   return courseId.split(".")[0].toUpperCase();
+}
+
+function stableHash(value: string) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+export function recommendClubs({
+  interestQuery,
+  plannedCourses,
+  matchLimit = 4,
+  surpriseLimit = 2,
+}: {
+  interestQuery: string;
+  plannedCourses: PlannedCourse[];
+  matchLimit?: number;
+  surpriseLimit?: number;
+}): ClubRecommendation[] {
+  const profileText = [interestQuery, ...plannedCourses.map((course) => course.title)].join(" ").trim();
+  const profileTokens = tokens(profileText);
+  const prefixes = new Set(plannedCourses.map((course) => coursePrefix(course.courseId)));
+  const seed = stableHash(`${profileText}|${plannedCourses.map((course) => course.courseId).join("|")}`);
+
+  const ranked = mitClubs.map((club, index) => {
+    const matchedWords = club.keywords.filter((keyword) => profileTokens.has(keyword));
+    const matchedCourse = club.coursePrefixes.some((prefix) => prefixes.has(prefix));
+    const score = matchedWords.length * 3 + (matchedCourse ? 2 : 0);
+    const reason = matchedWords.length
+      ? `Matches your interest in ${matchedWords.slice(0, 2).join(" and ")}.`
+      : matchedCourse
+        ? "Connects with courses on your plan."
+        : "A welcoming way to try something beyond your usual path.";
+    return { club, index, score, reason };
+  });
+
+  ranked.sort((a, b) => b.score - a.score || a.index - b.index);
+  const matches = ranked.slice(0, matchLimit);
+  const selectedIds = new Set(matches.map(({ club }) => club.id));
+  const surprisePool = ranked
+    .filter(({ club }) => !selectedIds.has(club.id))
+    .sort((a, b) => stableHash(`${seed}:${a.club.id}`) - stableHash(`${seed}:${b.club.id}`));
+
+  return [
+    ...matches.map(({ club, reason }) => ({ ...club, kind: "match" as const, reason })),
+    ...surprisePool.slice(0, surpriseLimit).map(({ club }) => ({
+      ...club,
+      kind: "surprise" as const,
+      reason: "A surprise pick to help you discover a different corner of MIT.",
+    })),
+  ];
 }
 
 export function recommendSocialThemes({
