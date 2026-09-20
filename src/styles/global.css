@@ -1055,7 +1055,7 @@ button:disabled { cursor: default; opacity: .65; }
 .course-map-pinned-tray {
   position: absolute;
   z-index: 15;
-  top: 76px;
+  top: 18px;
   right: 18px;
   max-width: min(420px, calc(100vw - 36px));
   padding: 10px 12px;
