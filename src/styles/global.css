@@ -1085,6 +1085,17 @@ button:disabled { cursor: default; opacity: .65; }
 .course-map-choice-options button strong,
 .course-map-choice-options button span { display: block; }
 .course-map-choice-options button strong { color: var(--green); font-size: 11px; }
+.course-map-choice-options .course-map-permission-option strong { color: #6b4b08; }
+.course-map-choice-options .course-map-permission-option {
+  border-color: #ddc77b;
+  background: #fff9e6;
+}
+.course-map-choice-options .course-map-permission-option:hover { background: #fff1c7; }
+.course-map-choice-options .course-map-permission-option.selected {
+  border-color: #a77c11;
+  background: #f8e8af;
+  box-shadow: inset 0 0 0 1px #c49a26;
+}
 .course-map-choice-options button span {
   margin-top: 3px;
   overflow: hidden;

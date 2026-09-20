@@ -157,6 +157,22 @@ describe("course map forest layout", () => {
     }
   });
 
+  it("adds instructor permission as a selectable alternative in every One Of box", () => {
+    const catalog = [
+      course("1.001", "Foundation A"),
+      course("1.002", "Foundation B"),
+      course("1.003", "Alternative destination", "1.001/1.002"),
+    ];
+    const { families } = buildCourseFamilies(catalog);
+    const target = families.find((family) => family.id === "1.003")!;
+    const graph = buildPrerequisiteForest([target], families, new Map(), new Map(), new Set(["mit:1.003"]));
+    const choice = [...graph.logicByNodeId.values()].find((logic) => logic.kind === "any");
+
+    expect(choice?.optionFamilies.map((family) => family.id)).toEqual(["1.001", "1.002"]);
+    expect(choice?.instructorPermissionCourseId).toBe("1.003");
+    expect(choice?.instructorPermissionSelected).toBe(true);
+  });
+
   it("uses ELK to give tidy map non-overlapping card positions and routed edges", async () => {
     const catalog = [
       course("1.001", "Foundation A"),

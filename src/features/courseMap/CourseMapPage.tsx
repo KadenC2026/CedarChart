@@ -51,6 +51,9 @@ type GraphData = {
 type LogicNodeData = {
   kind: "all" | "any";
   optionFamilies: CourseFamily[];
+  /** A user-confirmed waiver is always available alongside catalog OR choices. */
+  instructorPermissionCourseId?: string;
+  instructorPermissionSelected?: boolean;
 };
 
 type RoutedEdgeData = {
@@ -71,7 +74,7 @@ const elk = new ELK();
 function graphNodeSize(node: Node, logic?: LogicNodeData) {
   if (node.id.startsWith("logic:")) {
     return logic?.kind === "any"
-      ? { width: 260, height: 56 + Math.ceil(Math.max(1, logic.optionFamilies.length) / 2) * 54 }
+      ? { width: 260, height: 56 + Math.ceil(Math.max(1, logic.optionFamilies.length + (logic.instructorPermissionCourseId ? 1 : 0)) / 2) * 54 }
       : { width: 44, height: 92 };
   }
   return { width: 210, height: 82 };
@@ -421,6 +424,7 @@ function buildPrerequisiteGraph(
   target: CourseFamily,
   families: CourseFamily[],
   selectedFamilyIds: Set<string>,
+  instructorPermissionCourseIds: Set<string>,
 ): GraphData {
   const discovered = new Map<string, CourseFamily>();
   const edgeKeys = new Set<string>();
@@ -507,6 +511,8 @@ function buildPrerequisiteGraph(
       logicByNodeId.set(logicId, {
         kind: expression.type,
         optionFamilies: allOptions,
+        instructorPermissionCourseId: target.primary.subject_id,
+        instructorPermissionSelected: instructorPermissionCourseIds.has(`mit:${target.primary.subject_id}`),
       });
       addEdge(logicId, edgeTarget, !logicByNodeId.has(edgeTarget));
       return;
@@ -542,6 +548,7 @@ export function buildPrerequisiteForest(
   families: CourseFamily[],
   plannedTermByFamilyId = new Map<string, number>(),
   creditLabelByFamilyId = new Map<string, string>(),
+  instructorPermissionCourseIds = new Set<string>(),
 ): GraphData {
   const familyByNodeId = new Map<string, CourseFamily>();
   const logicByNodeId = new Map<string, LogicNodeData>();
@@ -553,7 +560,7 @@ export function buildPrerequisiteForest(
   // its selected dependent therefore remain one connected graph instead of becoming
   // duplicate nodes in separate trees.
   for (const target of targets) {
-    const tree = buildPrerequisiteGraph(target, families, targetIds);
+    const tree = buildPrerequisiteGraph(target, families, targetIds, instructorPermissionCourseIds);
     for (const [id, family] of tree.familyByNodeId) familyByNodeId.set(id, family);
     for (const [id, logic] of tree.logicByNodeId) logicByNodeId.set(id, logic);
     for (const [id, sourceId] of tree.replacementPositionSourceByNodeId) {
@@ -658,7 +665,7 @@ export function buildPrerequisiteForest(
       const logic = logicByNodeId.get(id);
       if (!logic) return 82;
       if (logic.kind === "all") return 92;
-      return 56 + Math.ceil(Math.max(1, logic.optionFamilies.length) / 2) * 54;
+      return 56 + Math.ceil(Math.max(1, logic.optionFamilies.length + (logic.instructorPermissionCourseId ? 1 : 0)) / 2) * 54;
     };
     const layerHeight = (idsInLayer: string[]) =>
       idsInLayer.reduce((sum, id) => sum + estimatedNodeHeight(id), 0) +
@@ -747,6 +754,18 @@ export function buildPrerequisiteForest(
                       <span>{option.title}</span>
                     </button>
                   ))}
+                  {logic.instructorPermissionCourseId && (
+                    <button
+                      className={`nodrag nopan course-map-permission-option${logic.instructorPermissionSelected ? " selected" : ""}`}
+                      data-instructor-permission-course-id={logic.instructorPermissionCourseId}
+                      key="instructor-permission"
+                      type="button"
+                      title="Record or remove your instructor-permission waiver"
+                    >
+                      <strong>Instructor permission</strong>
+                      <span>{logic.instructorPermissionSelected ? "Permission recorded" : "Waive prerequisites"}</span>
+                    </button>
+                  )}
                 </div>
               </div>
             ) : (
@@ -1028,9 +1047,15 @@ export default function CourseMapPage() {
 
   const graph = useMemo(
     () => (graphTargets.length
-      ? buildPrerequisiteForest(graphTargets, families, plannedTermByFamilyId, creditLabelByFamilyId)
+      ? buildPrerequisiteForest(
+        graphTargets,
+        families,
+        plannedTermByFamilyId,
+        creditLabelByFamilyId,
+        new Set(state.instructorPermissionCourseIds),
+      )
       : null),
-    [graphTargets, families, plannedTermByFamilyId, creditLabelByFamilyId],
+    [graphTargets, families, plannedTermByFamilyId, creditLabelByFamilyId, state.instructorPermissionCourseIds],
   );
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState<Node>([]);
   const draggedPositionsRef = useRef(new Map<string, { x: number; y: number }>());
@@ -1430,6 +1455,12 @@ export default function CourseMapPage() {
           minZoom={0.08}
           maxZoom={2.2}
           onNodeClick={(event, node) => {
+            const permissionElement = (event.target as HTMLElement).closest<HTMLElement>("[data-instructor-permission-course-id]");
+            const permissionCourseId = permissionElement?.dataset.instructorPermissionCourseId;
+            if (permissionCourseId) {
+              dispatch({ type: "TOGGLE_INSTRUCTOR_PERMISSION", courseId: `mit:${permissionCourseId}` });
+              return;
+            }
             const optionElement = (event.target as HTMLElement).closest<HTMLElement>("[data-family-id]");
             const optionFamilyId = optionElement?.dataset.familyId;
             if (optionFamilyId) {
