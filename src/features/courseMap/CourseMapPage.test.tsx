@@ -234,6 +234,28 @@ describe("course map forest layout", () => {
     expect(graph.edges.map((edge) => `${edge.source}->${edge.target}`)).toEqual(["6.3900->6.7960"]);
   });
 
+  it("does not offer a direct prerequisite waiver for a course already on the plan", () => {
+    const catalog = [
+      course("18.701", "Algebra I"),
+      course("18.702", "Algebra II", "18.701"),
+    ];
+    const { families } = buildCourseFamilies(catalog);
+    const target = families.find((family) => family.id === "18.702")!;
+    const graph = buildPrerequisiteForest(
+      [target],
+      families,
+      new Map([["18.701", 0], ["18.702", 1]]),
+      new Map(),
+      new Set(),
+      new Set(),
+      new Set(),
+      new Set(["18.701", "18.702"]),
+    );
+
+    expect(graph.directPrerequisitePermissionByNodeId.get("18.701")).toBeUndefined();
+    expect(graph.edges.map((edge) => `${edge.source}->${edge.target}`)).toContain("18.701->18.702");
+  });
+
 
   it("orders connected branches to avoid a needless crossing", () => {
     const catalog = [
