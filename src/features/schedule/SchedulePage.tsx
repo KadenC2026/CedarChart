@@ -26,6 +26,14 @@ import { useApp } from "../../state/AppContext";
 
 const hourHeight = 34;
 
+function sectionKindLabel(kind: string) {
+  const normalized = kind.trim().toLowerCase();
+  if (normalized === "recitation" || normalized === "rec") return "REC";
+  if (normalized === "lecture" || normalized === "lec") return "LEC";
+  if (normalized === "laboratory" || normalized === "lab") return "LAB";
+  return kind.toUpperCase();
+}
+
 function meetingSummary(course: RemoteCourse) {
   const sections = parseSchedule(course.schedule);
   if (!sections.length) return "No meeting times in the imported snapshot";
@@ -33,8 +41,8 @@ function meetingSummary(course: RemoteCourse) {
     .map((section) => {
       const first = formatMeeting(section.options[0].blocks);
       return section.options.length > 1
-        ? `${section.kind} ${first} (+${section.options.length - 1} other option${section.options.length === 2 ? "" : "s"})`
-        : `${section.kind} ${first}`;
+        ? `${sectionKindLabel(section.kind)} ${first} (+${section.options.length - 1} other option${section.options.length === 2 ? "" : "s"})`
+        : `${sectionKindLabel(section.kind)} ${first}`;
     })
     .join(" · ");
 }
@@ -45,7 +53,7 @@ function WeekGrid({ candidate }: { candidate: ScheduleCandidate }) {
       choice.option.blocks.map((block) => ({
         ...block,
         subjectId: entry.subjectId,
-        kind: choice.kind.toUpperCase(),
+        kind: sectionKindLabel(choice.kind),
       })),
     ),
   );
@@ -210,7 +218,7 @@ export default function SchedulePage() {
           (blocks[i].subjectId !== blocks[j].subjectId || blocks[i].kind !== blocks[j].kind) &&
           blocksOverlap(blocks[i], blocks[j])
         ) {
-          return `${blocks[i].subjectId} ${blocks[i].kind.toUpperCase()} overlaps ${blocks[j].subjectId} ${blocks[j].kind.toUpperCase()}.`;
+          return `${blocks[i].subjectId} ${sectionKindLabel(blocks[i].kind)} overlaps ${blocks[j].subjectId} ${sectionKindLabel(blocks[j].kind)}.`;
         }
       }
     }
@@ -532,7 +540,7 @@ export default function SchedulePage() {
                         const selectedIndex = overridden ?? Math.max(0, originalIndex);
                         return (
                           <label key={choice.kind}>
-                            <span>{choice.kind.toUpperCase()}</span>
+                            <span>{sectionKindLabel(choice.kind)}</span>
                             <select
                               value={selectedIndex}
                               onChange={(event) =>
@@ -546,7 +554,7 @@ export default function SchedulePage() {
                             >
                               {section.options.map((option, optionIndex) => (
                                 <option value={optionIndex} key={optionIndex}>
-                                  {choice.kind.toUpperCase()} {optionIndex + 1} · {formatMeeting(option.blocks)}
+                                  {sectionKindLabel(choice.kind)} {optionIndex + 1} · {formatMeeting(option.blocks)}
                                   {option.location ? ` · ${option.location}` : ""}
                                 </option>
                               ))}
