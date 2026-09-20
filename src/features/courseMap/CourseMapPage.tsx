@@ -141,39 +141,125 @@ function buildPrerequisiteGraph(target: CourseFamily, families: CourseFamily[]):
   return { nodes, edges, familyByNodeId };
 }
 
-function buildPrerequisiteForest(targets: CourseFamily[], families: CourseFamily[]): GraphData {
-  const nodes: Node[] = [];
-  const edges: Edge[] = [];
+export function buildPrerequisiteForest(targets: CourseFamily[], families: CourseFamily[]): GraphData {
   const familyByNodeId = new Map<string, CourseFamily>();
-  let nextTreeX = 0;
+  const edgeById = new Map<string, Edge>();
+  const targetIds = new Set(targets.map((target) => target.id));
 
+  // Merge overlapping trees by their real family IDs. A selected prerequisite and
+  // its selected dependent therefore remain one connected graph instead of becoming
+  // duplicate nodes in separate trees.
   for (const target of targets) {
     const tree = buildPrerequisiteGraph(target, families);
-    const xs = tree.nodes.map((node) => node.position.x);
-    const minX = Math.min(...xs, 0);
-    const maxX = Math.max(...xs, 0);
-    const prefix = target.id + "::";
+    for (const [id, family] of tree.familyByNodeId) familyByNodeId.set(id, family);
+    for (const edge of tree.edges) edgeById.set(`${edge.source}->${edge.target}`, edge);
+  }
 
-    for (const node of tree.nodes) {
-      const id = prefix + node.id;
-      nodes.push({
-        ...node,
-        id,
-        position: { ...node.position, x: node.position.x - minX + nextTreeX },
-      });
-      familyByNodeId.set(id, tree.familyByNodeId.get(node.id)!);
+  const edges = [...edgeById.values()];
+  const neighbors = new Map<string, Set<string>>();
+  for (const id of familyByNodeId.keys()) neighbors.set(id, new Set());
+  for (const edge of edges) {
+    neighbors.get(edge.source)?.add(edge.target);
+    neighbors.get(edge.target)?.add(edge.source);
+  }
+
+  const components: string[][] = [];
+  const visited = new Set<string>();
+  for (const id of familyByNodeId.keys()) {
+    if (visited.has(id)) continue;
+    const component: string[] = [];
+    const stack = [id];
+    visited.add(id);
+    while (stack.length) {
+      const current = stack.pop()!;
+      component.push(current);
+      for (const neighbor of neighbors.get(current) ?? []) {
+        if (visited.has(neighbor)) continue;
+        visited.add(neighbor);
+        stack.push(neighbor);
+      }
+    }
+    components.push(component);
+  }
+
+  const targetOrder = new Map(targets.map((target, index) => [target.id, index]));
+  components.sort((a, b) => {
+    const order = (component: string[]) => Math.min(
+      ...component.filter((id) => targetIds.has(id)).map((id) => targetOrder.get(id) ?? Number.MAX_SAFE_INTEGER),
+      Number.MAX_SAFE_INTEGER,
+    );
+    return order(a) - order(b);
+  });
+
+  const nodes: Node[] = [];
+  const horizontalGap = 300;
+  const verticalGap = 122;
+  const componentGap = 210;
+  let nextComponentY = 0;
+
+  for (const component of components) {
+    const ids = new Set(component);
+    const componentEdges = edges.filter((edge) => ids.has(edge.source) && ids.has(edge.target));
+    const incomingCount = new Map(component.map((id) => [id, 0]));
+    const outgoing = new Map(component.map((id) => [id, [] as string[]]));
+    const rank = new Map(component.map((id) => [id, 0]));
+
+    for (const edge of componentEdges) {
+      incomingCount.set(edge.target, (incomingCount.get(edge.target) ?? 0) + 1);
+      outgoing.get(edge.source)?.push(edge.target);
     }
 
-    for (const edge of tree.edges) {
-      edges.push({
-        ...edge,
-        id: prefix + edge.id,
-        source: prefix + edge.source,
-        target: prefix + edge.target,
+    const queue = component
+      .filter((id) => (incomingCount.get(id) ?? 0) === 0)
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    for (let cursor = 0; cursor < queue.length; cursor += 1) {
+      const source = queue[cursor];
+      for (const dependent of outgoing.get(source) ?? []) {
+        rank.set(dependent, Math.max(rank.get(dependent) ?? 0, (rank.get(source) ?? 0) + 1));
+        incomingCount.set(dependent, (incomingCount.get(dependent) ?? 1) - 1);
+        if (incomingCount.get(dependent) === 0) queue.push(dependent);
+      }
+    }
+
+    const layers = new Map<number, string[]>();
+    for (const id of component) {
+      const layer = rank.get(id) ?? 0;
+      layers.set(layer, [...(layers.get(layer) ?? []), id]);
+    }
+    for (const layer of layers.values()) {
+      layer.sort((a, b) =>
+        familyByNodeId.get(a)!.label.localeCompare(familyByNodeId.get(b)!.label, undefined, { numeric: true }),
+      );
+    }
+
+    const maxLayerSize = Math.max(...[...layers.values()].map((layer) => layer.length), 1);
+    const componentHeight = Math.max(90, (maxLayerSize - 1) * verticalGap + 90);
+
+    for (const [layer, layerIds] of [...layers.entries()].sort((a, b) => a[0] - b[0])) {
+      const layerHeight = Math.max(0, (layerIds.length - 1) * verticalGap);
+      const startY = nextComponentY + (componentHeight - layerHeight) / 2;
+      layerIds.forEach((id, index) => {
+        const family = familyByNodeId.get(id)!;
+        nodes.push({
+          id,
+          position: { x: layer * horizontalGap, y: startY + index * verticalGap },
+          sourcePosition: Position.Right,
+          targetPosition: Position.Left,
+          className: "course-map-node" + (targetIds.has(id) ? " course-map-target" : ""),
+          data: {
+            label: (
+              <div className="course-map-node-content">
+                <strong>{family.label}</strong>
+                <span>{family.title}</span>
+                {family.members.length > 1 && <small>{family.members.length} variants merged</small>}
+              </div>
+            ),
+          },
+        });
       });
     }
 
-    nextTreeX += maxX - minX + 430;
+    nextComponentY += componentHeight + componentGap;
   }
 
   return { nodes, edges, familyByNodeId };
@@ -756,7 +842,7 @@ export default function CourseMapPage() {
       )}
 
       <div className="course-map-legend">
-        <strong>{graphTargets.length} course tree{graphTargets.length === 1 ? "" : "s"}</strong>
+        <strong>{graphTargets.length} selected course{graphTargets.length === 1 ? "" : "s"}</strong>
         <span>{graph.nodes.length} course families in prerequisite map</span>
       </div>
     </section>
