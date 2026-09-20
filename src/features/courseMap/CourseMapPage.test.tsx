@@ -70,7 +70,6 @@ describe("course map forest layout", () => {
     const [[choiceId, choice]] = [...graph.logicByNodeId.entries()];
 
     expect(choice.kind).toBe("any");
-    expect(choice.expanded).toBe(true);
     expect(choice.optionFamilies.map((family) => family.id)).toEqual(["1.001", "1.002"]);
     expect(graph.edges.map((edge) => `${edge.source}->${edge.target}`)).toEqual([
       `${choiceId}->1.003`,
@@ -78,29 +77,25 @@ describe("course map forest layout", () => {
     expect(graph.edges.find((edge) => edge.source === choiceId)?.markerEnd).toBeDefined();
   });
 
-  it("collapses unselected OR branches by default and expands on request", () => {
+  it("replaces a satisfied OR container with the selected prerequisite subtree", () => {
     const catalog = [
-      course("1.001", "Option A"),
+      course("1.000", "Foundation"),
+      course("1.001", "Option A", "1.000"),
       course("1.002", "Option B"),
       course("1.003", "Destination", "1.001/1.002"),
     ];
     const { families } = buildCourseFamilies(catalog);
     const selected = families.filter((family) => ["1.001", "1.003"].includes(family.id));
-    const collapsed = buildPrerequisiteForest(selected, families);
-    const [[choiceId, choice]] = [...collapsed.logicByNodeId.entries()];
+    const graph = buildPrerequisiteForest(selected, families);
 
-    expect(choice).toMatchObject({ expanded: false, hasSelectedOption: true, hiddenCount: 1 });
-    expect(choice.optionFamilies.map((family) => family.id)).toEqual(["1.001"]);
-    expect(collapsed.familyByNodeId.has("1.001")).toBe(true);
-    expect(collapsed.familyByNodeId.has("1.002")).toBe(false);
-
-    const expanded = buildPrerequisiteForest(selected, families, { [choiceId]: true });
-    expect(expanded.logicByNodeId.get(choiceId)).toMatchObject({ expanded: true, hiddenCount: 0 });
-    expect(expanded.logicByNodeId.get(choiceId)?.optionFamilies.map((family) => family.id)).toEqual([
-      "1.001",
-      "1.002",
-    ]);
-    expect(expanded.familyByNodeId.has("1.002")).toBe(false);
+    expect(graph.logicByNodeId.size).toBe(0);
+    expect(graph.familyByNodeId.has("1.000")).toBe(true);
+    expect(graph.familyByNodeId.has("1.001")).toBe(true);
+    expect(graph.familyByNodeId.has("1.002")).toBe(false);
+    expect(graph.edges.map((edge) => `${edge.source}->${edge.target}`)).toEqual(expect.arrayContaining([
+      "1.000->1.001",
+      "1.001->1.003",
+    ]));
   });
 
   it("reveals prerequisites only for selected courses", () => {

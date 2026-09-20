@@ -47,9 +47,6 @@ type GraphData = {
 };
 
 type LogicNodeData = {
-  expanded: boolean;
-  hasSelectedOption: boolean;
-  hiddenCount: number;
   kind: "all" | "any";
   optionFamilies: CourseFamily[];
 };
@@ -195,7 +192,6 @@ function buildPrerequisiteGraph(
   target: CourseFamily,
   families: CourseFamily[],
   selectedFamilyIds: Set<string>,
-  choiceExpansionOverrides: Record<string, boolean>,
 ): GraphData {
   const discovered = new Map<string, CourseFamily>();
   const edgeKeys = new Set<string>();
@@ -259,16 +255,18 @@ function buildPrerequisiteGraph(
 
       const allOptions = [...uniqueFamilies.values()];
       const selectedOptions = allOptions.filter((family) => selectedFamilyIds.has(family.id));
-      const defaultsCollapsed = selectedOptions.length > 0;
+      if (selectedOptions.length > 0) {
+        selectedOptions.forEach((family) => {
+          discover(family);
+          addEdge(family.id, edgeTarget, !logicByNodeId.has(edgeTarget));
+        });
+        return;
+      }
+
       const logicId = `logic:${edgeTarget}:${path}:${expression.type}`;
-      const expanded = choiceExpansionOverrides[logicId] ?? !defaultsCollapsed;
-      const optionFamilies = expanded ? allOptions : selectedOptions;
       logicByNodeId.set(logicId, {
-        expanded,
-        hasSelectedOption: selectedOptions.length > 0,
-        hiddenCount: allOptions.length - optionFamilies.length,
         kind: expression.type,
-        optionFamilies,
+        optionFamilies: allOptions,
       });
       addEdge(logicId, edgeTarget, !logicByNodeId.has(edgeTarget));
       return;
@@ -276,9 +274,6 @@ function buildPrerequisiteGraph(
 
     const logicId = `logic:${edgeTarget}:${path}:${expression.type}`;
     logicByNodeId.set(logicId, {
-      expanded: true,
-      hasSelectedOption: false,
-      hiddenCount: 0,
       kind: expression.type,
       optionFamilies: [],
     });
@@ -304,7 +299,6 @@ function buildPrerequisiteGraph(
 export function buildPrerequisiteForest(
   targets: CourseFamily[],
   families: CourseFamily[],
-  choiceExpansionOverrides: Record<string, boolean> = {},
 ): GraphData {
   const familyByNodeId = new Map<string, CourseFamily>();
   const logicByNodeId = new Map<string, LogicNodeData>();
@@ -315,7 +309,7 @@ export function buildPrerequisiteForest(
   // its selected dependent therefore remain one connected graph instead of becoming
   // duplicate nodes in separate trees.
   for (const target of targets) {
-    const tree = buildPrerequisiteGraph(target, families, targetIds, choiceExpansionOverrides);
+    const tree = buildPrerequisiteGraph(target, families, targetIds);
     for (const [id, family] of tree.familyByNodeId) familyByNodeId.set(id, family);
     for (const [id, logic] of tree.logicByNodeId) logicByNodeId.set(id, logic);
     for (const edge of tree.edges) edgeById.set(`${edge.source}->${edge.target}`, edge);
@@ -464,12 +458,11 @@ export function buildPrerequisiteForest(
             ) : logic?.kind === "any" ? (
               <div
                 className="course-map-choice-content"
-                aria-label={logic.expanded ? "OR prerequisite choices" : "Selected OR prerequisite choice"}
-                title={logic.hiddenCount ? `Show ${logic.hiddenCount} more choices` : "OR prerequisite choices"}
+                aria-label="Unresolved OR prerequisite choices"
+                title="Choose one prerequisite to satisfy this requirement"
               >
                 <div className="course-map-choice-heading">
                   <strong>ONE OF</strong>
-                  {logic.hiddenCount > 0 && <small>+{logic.hiddenCount}</small>}
                 </div>
                 <div className="course-map-choice-options">
                   {logic.optionFamilies.map((option) => (
@@ -603,7 +596,6 @@ export default function CourseMapPage() {
   const [mapSearchNote, setMapSearchNote] = useState<string | null>(null);
   const [aiSuggestions, setAiSuggestions] = useState<CourseFamily[]>([]);
   const [suggestionSource, setSuggestionSource] = useState<"ai" | "catalog">("catalog");
-  const [choiceExpansionOverrides, setChoiceExpansionOverrides] = useState<Record<string, boolean>>({});
   const normalized = query.trim().toLowerCase();
 
   const departments = useMemo(() => departmentOptions(catalog), [catalog]);
@@ -654,9 +646,9 @@ export default function CourseMapPage() {
 
   const graph = useMemo(
     () => (graphTargets.length
-      ? buildPrerequisiteForest(graphTargets, families, choiceExpansionOverrides)
+      ? buildPrerequisiteForest(graphTargets, families)
       : null),
-    [graphTargets, families, choiceExpansionOverrides],
+    [graphTargets, families],
   );
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState<Node>([]);
 
@@ -985,18 +977,10 @@ export default function CourseMapPage() {
           minZoom={0.08}
           maxZoom={2.2}
           onNodeClick={(event, node) => {
-            const logic = graph.logicByNodeId.get(node.id);
             const optionElement = (event.target as HTMLElement).closest<HTMLElement>("[data-family-id]");
             const optionFamilyId = optionElement?.dataset.familyId;
             if (optionFamilyId) {
               setSelectedFamilyId(optionFamilyId);
-              return;
-            }
-            if (logic?.kind === "any" && (logic.hiddenCount > 0 || logic.hasSelectedOption)) {
-              setChoiceExpansionOverrides((current) => ({
-                ...current,
-                [node.id]: !logic.expanded,
-              }));
               return;
             }
             setSelectedFamilyId(graph.familyByNodeId.get(node.id)?.id ?? null);
