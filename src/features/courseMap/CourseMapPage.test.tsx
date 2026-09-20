@@ -173,7 +173,7 @@ describe("course map forest layout", () => {
     expect(choice?.instructorPermissionSelected).toBe(false);
   });
 
-  it("replaces a waived course's prerequisite branches with a marked course card", () => {
+  it("replaces a waived course's prerequisite branches without changing its course-card color", () => {
     const catalog = [
       course("1.001", "Foundation A"),
       course("1.002", "Foundation B"),
@@ -184,7 +184,7 @@ describe("course map forest layout", () => {
     const graph = buildPrerequisiteForest([target], families, new Map(), new Map(), new Set(["mit:1.003"]));
 
     expect(graph.nodes.map((node) => node.id)).toEqual(["1.003"]);
-    expect(graph.nodes[0].className).toContain("course-map-permission-waived");
+    expect(graph.nodes[0].className).not.toContain("course-map-permission-waived");
     expect(graph.edges).toEqual([]);
   });
 

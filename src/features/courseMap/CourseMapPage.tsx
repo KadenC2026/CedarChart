@@ -617,7 +617,6 @@ export function buildPrerequisiteForest(
             ? "course-map-node" +
               (plannedTerm == null ? "" : ` course-map-scheduled ${termColorClass(plannedTerm)}`) +
               (plannedTerm == null && creditLabel ? " course-map-credited" : "") +
-              (instructorPermissionCourseIds.has(`mit:${family.primary.subject_id}`) ? " course-map-permission-waived" : "") +
               (targetIds.has(id) ? " course-map-target" : "")
             : `course-map-logic-node course-map-logic-${logic?.kind ?? "all"}`,
           data: {
