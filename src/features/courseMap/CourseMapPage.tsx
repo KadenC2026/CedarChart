@@ -4,7 +4,6 @@ import {
   BaseEdge,
   Background,
   Controls,
-  getSmoothStepPath,
   MarkerType,
   Position,
   ReactFlow,
@@ -41,7 +40,45 @@ type GraphData = {
   familyByNodeId: Map<string, CourseFamily>;
 };
 
-type RoutedEdge = Edge<{ routeY?: number }, "routed">;
+type RoutedEdgeData = {
+  channelX?: number;
+  routeY?: number;
+  sourceExitX?: number;
+  sourceOffset?: number;
+  targetEntryX?: number;
+  targetOffset?: number;
+};
+
+type RoutedEdge = Edge<RoutedEdgeData, "routed">;
+
+function roundedPath(points: Array<{ x: number; y: number }>, cornerRadius = 14) {
+  const cleaned = points.filter((point, index) =>
+    index === 0 || point.x !== points[index - 1].x || point.y !== points[index - 1].y,
+  );
+  const first = cleaned[0];
+  let path = `M ${first.x} ${first.y}`;
+
+  for (let index = 1; index < cleaned.length - 1; index += 1) {
+    const previous = cleaned[index - 1];
+    const current = cleaned[index];
+    const next = cleaned[index + 1];
+    const incoming = Math.hypot(current.x - previous.x, current.y - previous.y);
+    const outgoing = Math.hypot(next.x - current.x, next.y - current.y);
+    const radius = Math.min(cornerRadius, incoming / 2, outgoing / 2);
+    const before = {
+      x: current.x + ((previous.x - current.x) / incoming) * radius,
+      y: current.y + ((previous.y - current.y) / incoming) * radius,
+    };
+    const after = {
+      x: current.x + ((next.x - current.x) / outgoing) * radius,
+      y: current.y + ((next.y - current.y) / outgoing) * radius,
+    };
+    path += ` L ${before.x} ${before.y} Q ${current.x} ${current.y} ${after.x} ${after.y}`;
+  }
+
+  const last = cleaned[cleaned.length - 1];
+  return `${path} L ${last.x} ${last.y}`;
+}
 
 function PrerequisiteEdge({
   id,
@@ -49,31 +86,28 @@ function PrerequisiteEdge({
   sourceY,
   targetX,
   targetY,
-  sourcePosition,
-  targetPosition,
   markerEnd,
   style,
   data,
 }: EdgeProps<RoutedEdge>) {
-  const edgePath = data?.routeY == null
-    ? getSmoothStepPath({
-        sourceX,
-        sourceY,
-        targetX,
-        targetY,
-        sourcePosition,
-        targetPosition,
-        borderRadius: 10,
-        offset: 32,
-      })[0]
+  const routedSourceY = sourceY + (data?.sourceOffset ?? 0);
+  const routedTargetY = targetY + (data?.targetOffset ?? 0);
+  const points = data?.routeY == null
+    ? [
+        { x: sourceX, y: routedSourceY },
+        { x: data?.channelX ?? (sourceX + targetX) / 2, y: routedSourceY },
+        { x: data?.channelX ?? (sourceX + targetX) / 2, y: routedTargetY },
+        { x: targetX, y: routedTargetY },
+      ]
     : [
-        `M ${sourceX} ${sourceY}`,
-        `L ${sourceX + 28} ${sourceY}`,
-        `L ${sourceX + 28} ${data.routeY}`,
-        `L ${targetX - 28} ${data.routeY}`,
-        `L ${targetX - 28} ${targetY}`,
-        `L ${targetX} ${targetY}`,
-      ].join(" ");
+        { x: sourceX, y: routedSourceY },
+        { x: data.sourceExitX ?? sourceX + 28, y: routedSourceY },
+        { x: data.sourceExitX ?? sourceX + 28, y: data.routeY },
+        { x: data.targetEntryX ?? targetX - 28, y: data.routeY },
+        { x: data.targetEntryX ?? targetX - 28, y: routedTargetY },
+        { x: targetX, y: routedTargetY },
+      ];
+  const edgePath = roundedPath(points);
 
   return <BaseEdge id={id} path={edgePath} markerEnd={markerEnd} style={style} />;
 }
@@ -275,11 +309,16 @@ export function buildPrerequisiteForest(targets: CourseFamily[], families: Cours
 
     const maxLayerSize = Math.max(...[...layers.values()].map((layer) => layer.length), 1);
     const componentHeight = Math.max(90, (maxLayerSize - 1) * verticalGap + 90);
+    const longEdges = componentEdges.filter(
+      (edge) => (rank.get(edge.target) ?? 0) - (rank.get(edge.source) ?? 0) > 1,
+    );
+    const routingBand = Math.max(componentGap, 70 + longEdges.length * 22);
+    const componentTop = nextComponentY + routingBand;
     const nodePosition = new Map<string, { x: number; y: number }>();
 
     for (const [layer, layerIds] of [...layers.entries()].sort((a, b) => a[0] - b[0])) {
       const layerHeight = Math.max(0, (layerIds.length - 1) * verticalGap);
-      const startY = nextComponentY + (componentHeight - layerHeight) / 2;
+      const startY = componentTop + (componentHeight - layerHeight) / 2;
       layerIds.forEach((id, index) => {
         const family = familyByNodeId.get(id)!;
         const position = { x: layer * horizontalGap, y: startY + index * verticalGap };
@@ -303,18 +342,78 @@ export function buildPrerequisiteForest(targets: CourseFamily[], families: Cours
       });
     }
 
-    let outerLane = 0;
-    for (const edge of componentEdges) {
+    const sortedEdges = [...componentEdges].sort((a, b) => a.id.localeCompare(b.id));
+    const updateEdgeData = (edge: Edge, patch: RoutedEdgeData) => {
       edge.type = "routed";
-      const source = nodePosition.get(edge.source);
-      const target = nodePosition.get(edge.target);
-      if (source && target && target.x - source.x > horizontalGap + 1) {
-        edge.data = { routeY: nextComponentY - 36 - (outerLane % 7) * 18 };
-        outerLane += 1;
+      edge.data = { ...(edge.data ?? {}), ...patch };
+    };
+    const groupEdges = (keyFor: (edge: Edge) => string) => {
+      const groups = new Map<string, Edge[]>();
+      for (const edge of sortedEdges) {
+        const key = keyFor(edge);
+        groups.set(key, [...(groups.get(key) ?? []), edge]);
       }
+      return groups.values();
+    };
+    const portOffset = (index: number, count: number) => {
+      if (count === 1) return 0;
+      const step = Math.min(12, 36 / (count - 1));
+      return (index - (count - 1) / 2) * step;
+    };
+
+    for (const edgesFromSource of groupEdges((edge) => edge.source)) {
+      const ordered = [...edgesFromSource].sort((a, b) =>
+        (nodePosition.get(a.target)?.y ?? 0) - (nodePosition.get(b.target)?.y ?? 0) || a.id.localeCompare(b.id),
+      );
+      ordered.forEach((edge, index) => updateEdgeData(edge, {
+        sourceOffset: portOffset(index, ordered.length),
+      }));
+    }
+    for (const edgesToTarget of groupEdges((edge) => edge.target)) {
+      const ordered = [...edgesToTarget].sort((a, b) =>
+        (nodePosition.get(a.source)?.y ?? 0) - (nodePosition.get(b.source)?.y ?? 0) || a.id.localeCompare(b.id),
+      );
+      ordered.forEach((edge, index) => updateEdgeData(edge, {
+        targetOffset: portOffset(index, ordered.length),
+      }));
     }
 
-    nextComponentY += componentHeight + componentGap;
+    const adjacentEdges = sortedEdges.filter((edge) => !longEdges.includes(edge));
+    for (const edgesInGap of (() => {
+      const groups = new Map<number, Edge[]>();
+      for (const edge of adjacentEdges) {
+        const sourceX = nodePosition.get(edge.source)?.x ?? 0;
+        groups.set(sourceX, [...(groups.get(sourceX) ?? []), edge]);
+      }
+      return groups.values();
+    })()) {
+      edgesInGap.forEach((edge, index) => {
+        const sourceX = nodePosition.get(edge.source)?.x ?? 0;
+        const gapWidth = horizontalGap - 210;
+        updateEdgeData(edge, { channelX: sourceX + 210 + ((index + 1) * gapWidth) / (edgesInGap.length + 1) });
+      });
+    }
+
+    const longIndex = new Map(longEdges.map((edge, index) => [edge.id, index]));
+    for (const edgesAfterLayer of groupEdges((edge) => String(nodePosition.get(edge.source)?.x ?? 0))) {
+      const longInGroup = edgesAfterLayer.filter((edge) => longIndex.has(edge.id));
+      longInGroup.forEach((edge, index) => {
+        const sourceX = nodePosition.get(edge.source)?.x ?? 0;
+        updateEdgeData(edge, { sourceExitX: sourceX + 218 + ((index + 1) * 64) / (longInGroup.length + 1) });
+      });
+    }
+    for (const edgesBeforeLayer of groupEdges((edge) => String(nodePosition.get(edge.target)?.x ?? 0))) {
+      const longInGroup = edgesBeforeLayer.filter((edge) => longIndex.has(edge.id));
+      longInGroup.forEach((edge, index) => {
+        const targetX = nodePosition.get(edge.target)?.x ?? 0;
+        updateEdgeData(edge, { targetEntryX: targetX - 82 + ((index + 1) * 64) / (longInGroup.length + 1) });
+      });
+    }
+    longEdges.forEach((edge, index) => updateEdgeData(edge, {
+      routeY: componentTop - 42 - index * 22,
+    }));
+
+    nextComponentY = componentTop + componentHeight;
   }
 
   return { nodes, edges, familyByNodeId };
