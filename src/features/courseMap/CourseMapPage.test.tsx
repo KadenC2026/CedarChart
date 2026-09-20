@@ -48,8 +48,8 @@ describe("course map forest layout", () => {
       course("1.003", "Advanced", "1.001 and 1.002"),
     ];
     const { families } = buildCourseFamilies(catalog);
-    const target = families.find((family) => family.id === "1.003")!;
-    const graph = buildPrerequisiteForest([target], families);
+    const targets = families.filter((family) => ["1.002", "1.003"].includes(family.id));
+    const graph = buildPrerequisiteForest(targets, families);
     const directEdge = graph.edges.find((edge) => edge.source === "1.001" && edge.target === "1.003");
     const adjacentEdge = graph.edges.find((edge) => edge.source === "1.002" && edge.target === "1.003");
 
@@ -58,7 +58,7 @@ describe("course map forest layout", () => {
     expect(adjacentEdge?.data?.routeY).toBeUndefined();
   });
 
-  it("joins OR prerequisites at a collapsible choice connector", () => {
+  it("groups OR prerequisites inside one choice container", () => {
     const catalog = [
       course("1.001", "Option A"),
       course("1.002", "Option B"),
@@ -71,13 +71,11 @@ describe("course map forest layout", () => {
 
     expect(choice.kind).toBe("any");
     expect(choice.expanded).toBe(true);
-    expect(graph.edges.map((edge) => `${edge.source}->${edge.target}`)).toEqual(expect.arrayContaining([
-      `1.001->${choiceId}`,
-      `1.002->${choiceId}`,
+    expect(choice.optionFamilies.map((family) => family.id)).toEqual(["1.001", "1.002"]);
+    expect(graph.edges.map((edge) => `${edge.source}->${edge.target}`)).toEqual([
       `${choiceId}->1.003`,
-    ]));
+    ]);
     expect(graph.edges.find((edge) => edge.source === choiceId)?.markerEnd).toBeDefined();
-    expect(graph.edges.filter((edge) => edge.target === choiceId).every((edge) => !edge.markerEnd)).toBe(true);
   });
 
   it("collapses unselected OR branches by default and expands on request", () => {
@@ -91,12 +89,35 @@ describe("course map forest layout", () => {
     const collapsed = buildPrerequisiteForest(selected, families);
     const [[choiceId, choice]] = [...collapsed.logicByNodeId.entries()];
 
-    expect(choice).toMatchObject({ expanded: false, hiddenCount: 1 });
+    expect(choice).toMatchObject({ expanded: false, hasSelectedOption: true, hiddenCount: 1 });
+    expect(choice.optionFamilies.map((family) => family.id)).toEqual(["1.001"]);
     expect(collapsed.familyByNodeId.has("1.001")).toBe(true);
     expect(collapsed.familyByNodeId.has("1.002")).toBe(false);
 
     const expanded = buildPrerequisiteForest(selected, families, { [choiceId]: true });
     expect(expanded.logicByNodeId.get(choiceId)).toMatchObject({ expanded: true, hiddenCount: 0 });
-    expect(expanded.familyByNodeId.has("1.002")).toBe(true);
+    expect(expanded.logicByNodeId.get(choiceId)?.optionFamilies.map((family) => family.id)).toEqual([
+      "1.001",
+      "1.002",
+    ]);
+    expect(expanded.familyByNodeId.has("1.002")).toBe(false);
+  });
+
+  it("reveals prerequisites only for selected courses", () => {
+    const catalog = [
+      course("1.001", "Foundation"),
+      course("1.002", "Intermediate", "1.001"),
+      course("1.003", "Advanced", "1.002"),
+    ];
+    const { families } = buildCourseFamilies(catalog);
+    const advanced = families.find((family) => family.id === "1.003")!;
+    const intermediate = families.find((family) => family.id === "1.002")!;
+
+    const advancedOnly = buildPrerequisiteForest([advanced], families);
+    expect(advancedOnly.familyByNodeId.has("1.002")).toBe(true);
+    expect(advancedOnly.familyByNodeId.has("1.001")).toBe(false);
+
+    const bothSelected = buildPrerequisiteForest([intermediate, advanced], families);
+    expect(bothSelected.familyByNodeId.has("1.001")).toBe(true);
   });
 });

@@ -937,6 +937,63 @@ button:disabled { cursor: default; opacity: .65; }
   background: transparent !important;
   box-shadow: none !important;
 }
+.course-map-logic-any {
+  width: 260px !important;
+  height: auto !important;
+  min-height: 96px;
+  cursor: pointer;
+}
+.course-map-choice-content {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid #91aa98;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, .97);
+  box-shadow: 0 5px 18px rgba(36, 84, 58, .12);
+}
+.course-map-choice-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+  color: var(--green);
+  font-size: 10px;
+  letter-spacing: .1em;
+}
+.course-map-choice-heading small {
+  border-radius: 999px;
+  background: var(--green-soft);
+  padding: 3px 6px;
+  letter-spacing: 0;
+}
+.course-map-choice-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+.course-map-choice-options button {
+  min-width: 0;
+  border: 1px solid #d7e0d9;
+  border-radius: 11px;
+  background: #f8faf8;
+  padding: 8px;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.course-map-choice-options button:hover { background: var(--green-soft); }
+.course-map-choice-options button strong,
+.course-map-choice-options button span { display: block; }
+.course-map-choice-options button strong { color: var(--green); font-size: 11px; }
+.course-map-choice-options button span {
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .course-map-logic-content {
   position: relative;
   width: 100%;
@@ -981,8 +1038,7 @@ button:disabled { cursor: default; opacity: .65; }
   font-size: 8px;
   text-align: center;
 }
-.course-map-logic-any { cursor: pointer; }
-.course-map-logic-any:hover .course-map-logic-content strong { background: var(--green-soft); }
+.course-map-logic-any:hover .course-map-choice-content { border-color: var(--green); }
 .course-map-target {
   border: 2px solid var(--green) !important;
   background: #e8f1e8 !important;
