@@ -30,10 +30,6 @@ export default function PlannerPage() {
   const planned = new Set(state.plannedCourses.map(c => localId(c.courseId)));
   const catalogMap = useMemo(() => new Map(catalog.map(c => [c.subject_id, c])), [catalog]);
   const { familyByCourseId } = useMemo(() => buildCourseFamilies(catalog), [catalog]);
-  const priorCreditCourses = state.priorCredits.map((credit) => ({
-    credit,
-    course: catalogMap.get(localId(credit.courseId)),
-  }));
   const selectedRequirement = state.selectedRequirementId ? requirements[state.selectedRequirementId] : undefined;
   const progress = selectedRequirement ? evaluateRequirement(selectedRequirement, earned, catalogMap) : null;
   const projected = selectedRequirement ? evaluateRequirement(selectedRequirement, new Set([...earned, ...planned]), catalogMap) : null;
@@ -183,31 +179,6 @@ export default function PlannerPage() {
             </div>
             <span>{state.plannedCourses.length} planned course{state.plannedCourses.length === 1 ? "" : "s"}</span>
           </div>
-          <article className="term-card prior-credit-term">
-            <div className="term-heading">
-              <div>
-                <h2>Prior credit</h2>
-                <small>Earned before your first term</small>
-              </div>
-              <span>{priorCreditCourses.length} course{priorCreditCourses.length === 1 ? "" : "s"}</span>
-            </div>
-            <div className="term-courses">
-              {priorCreditCourses.map(({ credit, course }) => {
-                const courseId = localId(credit.courseId);
-                return (
-                  <div className="planned-course prior-credit-course" key={credit.courseId}>
-                    <button onClick={() => openProgression(courseId)} aria-label={`Open ${courseId} pathway`}>
-                      <strong>{courseId}</strong>
-                      <span>{course?.title ?? "MIT subject credit"}</span>
-                      <small>{credit.source === "ase" ? "Passed ASE · completed" : "Transfer, AP, or IB credit · completed"}</small>
-                    </button>
-                    <span className="prior-credit-check" aria-label="Completed">✓</span>
-                  </div>
-                );
-              })}
-              {!priorCreditCourses.length && <p className="empty-credit-term">Add AP, IB, transfer, or ASE credit in the Prior credit panel to show it here.</p>}
-            </div>
-          </article>
           <div className="road-grid compact-road-grid">
             {terms.map((term, termIndex) => {
               const planned = state.plannedCourses.filter((course) => course.term === termIndex);
@@ -285,6 +256,9 @@ export default function PlannerPage() {
         </main>
 
         <aside className="planner-pane planner-right-pane">
+          <div className="planner-credit-wrap">
+            <PriorCreditPanel catalog={catalog} />
+          </div>
           <div className="requirements-panel">
           <label htmlFor="requirement-select">Track a major or minor</label>
           <select
@@ -313,9 +287,6 @@ export default function PlannerPage() {
           </>}
           {state.selectedRequirementId && data && !selectedRequirement && <p className="error-note">This saved program is no longer available. Choose a program above.</p>}
 
-          </div>
-          <div className="planner-credit-wrap">
-            <PriorCreditPanel catalog={catalog} />
           </div>
           <PetitionAdvisor catalog={catalog} />
         </aside>
