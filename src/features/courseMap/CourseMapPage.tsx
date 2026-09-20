@@ -306,7 +306,7 @@ function buildPrerequisiteGraph(
   instructorPermissionCourseIds: Set<string>,
   instructorPermissionChoiceIds: Set<string>,
   instructorPermissionPrerequisiteIds: Set<string>,
-  scheduledFamilyIds: Set<string>,
+  satisfiedFamilyIds: Set<string>,
 ): GraphData {
   const discovered = new Map<string, CourseFamily>();
   const edgeKeys = new Set<string>();
@@ -347,7 +347,7 @@ function buildPrerequisiteGraph(
       const directPrerequisiteId = `${target.primary.subject_id}:${family.id}`;
       if (!logicByNodeId.has(edgeTarget) && instructorPermissionPrerequisiteIds.has(directPrerequisiteId)) return;
       discover(family);
-      if (!logicByNodeId.has(edgeTarget) && !scheduledFamilyIds.has(family.id)) {
+      if (!logicByNodeId.has(edgeTarget) && !satisfiedFamilyIds.has(family.id)) {
         directPrerequisitePermissionByNodeId.set(family.id, [
           ...(directPrerequisitePermissionByNodeId.get(family.id) ?? []),
           { prerequisiteId: directPrerequisiteId, targetLabel: target.label },
@@ -452,7 +452,7 @@ export function buildPrerequisiteForest(
   instructorPermissionCourseIds = new Set<string>(),
   instructorPermissionChoiceIds = new Set<string>(),
   instructorPermissionPrerequisiteIds = new Set<string>(),
-  scheduledFamilyIds = new Set<string>(),
+  satisfiedFamilyIds = new Set<string>(),
 ): GraphData {
   const familyByNodeId = new Map<string, CourseFamily>();
   const logicByNodeId = new Map<string, LogicNodeData>();
@@ -472,7 +472,7 @@ export function buildPrerequisiteForest(
       instructorPermissionCourseIds,
       instructorPermissionChoiceIds,
       instructorPermissionPrerequisiteIds,
-      scheduledFamilyIds,
+      satisfiedFamilyIds,
     );
     for (const [id, family] of tree.familyByNodeId) familyByNodeId.set(id, family);
     for (const [id, logic] of tree.logicByNodeId) logicByNodeId.set(id, logic);
@@ -984,7 +984,7 @@ export default function CourseMapPage() {
         new Set(state.instructorPermissionCourseIds),
         new Set(state.instructorPermissionChoiceIds),
         new Set(state.instructorPermissionPrerequisiteIds),
-        new Set(plannedTermByFamilyId.keys()),
+        new Set([...plannedTermByFamilyId.keys(), ...creditLabelByFamilyId.keys()]),
       )
       : null),
     [

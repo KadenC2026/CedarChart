@@ -256,6 +256,27 @@ describe("course map forest layout", () => {
     expect(graph.edges.map((edge) => `${edge.source}->${edge.target}`)).toContain("18.701->18.702");
   });
 
+  it("does not offer a direct prerequisite waiver for a course satisfied with prior credit", () => {
+    const catalog = [
+      course("18.01", "Calculus I"),
+      course("18.02", "Calculus II", "18.01"),
+    ];
+    const { families } = buildCourseFamilies(catalog);
+    const target = families.find((family) => family.id === "18.02")!;
+    const graph = buildPrerequisiteForest(
+      [target],
+      families,
+      new Map(),
+      new Map([["18.01", "Passed ASE · prerequisite satisfied"]]),
+      new Set(),
+      new Set(),
+      new Set(),
+      new Set(["18.01"]),
+    );
+
+    expect(graph.directPrerequisitePermissionByNodeId.get("18.01")).toBeUndefined();
+  });
+
 
   it("orders connected branches to avoid a needless crossing", () => {
     const catalog = [
