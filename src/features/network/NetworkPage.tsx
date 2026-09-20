@@ -71,11 +71,10 @@ export default function NetworkPage() {
 
   return (
     <section className="page network-page">
-      <div className="eyebrow">Research & career</div>
-      <h1>Find the right MIT doors.</h1>
+      <div className="eyebrow">Opportunities</div>
+      <h1>Research and careers</h1>
       <p className="lede">
-        TrackMIT matches your interests, goals, experience, and coursework with current labs, UROPs,
-        makerspaces, innovation programs, and career events.
+        Explore labs, UROPs, programs, and career events.
       </p>
 
       <div className="network-profile-bar">
@@ -113,7 +112,7 @@ export default function NetworkPage() {
       <div className="network-section-heading">
         <div>
           <span className="network-kicker">Suggested for you</span>
-          <h2>Places to explore and people to contact</h2>
+          <h2>Labs and UROPs</h2>
         </div>
         <span className={`network-method ${status === "AI" ? "ai" : ""}`}>
           {status === "loading" ? "Updating" : status === "AI" ? "AI ranked" : status === "error" ? "Profile match · AI unavailable" : "Profile match"}
@@ -144,7 +143,7 @@ export default function NetworkPage() {
       <div className="network-section-heading internship-heading">
         <div>
           <span className="network-kicker">Internships by student year</span>
-          <h2>{state.studentYear === "first-year" ? "Discovery programs and internships for first-years" : "Top-company student opportunities"}</h2>
+          <h2>{state.studentYear === "first-year" ? "First-year programs" : "Student opportunities"}</h2>
         </div>
         <a className="network-handshake-link" href="https://mit.joinhandshake.com/" target="_blank" rel="noreferrer">Search MIT Handshake ↗</a>
       </div>
@@ -169,7 +168,7 @@ export default function NetworkPage() {
       <div className="network-section-heading career-heading">
         <div>
           <span className="network-kicker">Career calendar</span>
-          <h2>Current recruiting and department events</h2>
+          <h2>Events</h2>
         </div>
       </div>
       <div className="network-career-grid">

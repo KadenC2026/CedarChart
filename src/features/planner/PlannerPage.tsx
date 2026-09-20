@@ -107,10 +107,10 @@ export default function PlannerPage() {
     <section className="planner-page planner-workspace-page">
       <div className="planner-compact-header">
         <div>
-          <div className="eyebrow">Your MIT road</div>
-          <h1>Plan your classes</h1>
+          <div className="eyebrow">Plan</div>
+          <h1>Course plan</h1>
         </div>
-        <p>Search courses, track requirements, and build your four-year plan.</p>
+        <p>Build and manage your plan.</p>
       </div>
 
       <div className="planner-dashboard">

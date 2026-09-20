@@ -307,10 +307,10 @@ export default function SchedulePage() {
 
   return (
     <section className="page schedule-page">
-      <div className="eyebrow">Schedule lab</div>
-      <h1>Build a schedule that fits.</h1>
+      <div className="eyebrow">Schedule</div>
+      <h1>Build a schedule</h1>
       <p className="lede">
-        Add subjects, set priorities, and compare combinations using published meeting times.
+        Compare course combinations using published meeting times.
       </p>
       <p className="data-note">
         Meeting times come from the imported FireRoad snapshot, which carries one term of section
@@ -322,7 +322,7 @@ export default function SchedulePage() {
         <header>
           <div>
             <div className="eyebrow">Fit finder</div>
-            <h2>Classes that fit your current schedule</h2>
+            <h2>Classes that fit</h2>
             <p>
               TrackMIT checks listed lecture, recitation, and lab options against the courses
               already in this plan term.

@@ -74,8 +74,8 @@ export default function CatalogPage() {
     <section className="page explore-page">
       <div className="section-heading">
         <div>
-          <div className="eyebrow">Explore the catalog</div>
-          <h1>See how courses connect.</h1>
+          <div className="eyebrow">Catalog</div>
+          <h1>Courses</h1>
         </div>
         <div className="filter-bar">
           <input

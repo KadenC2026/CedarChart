@@ -122,12 +122,10 @@ export default function DiscoveryPage() {
 
   return (
     <section className="page hero-page">
-      <div className="eyebrow">
-        Course discovery
-      </div>
-      <h1>Find the right next course.</h1>
+      <div className="eyebrow">Discover</div>
+      <h1>Find courses</h1>
       <p className="lede">
-        Describe an interest. TrackMIT matches it to MIT subjects and their prerequisite paths.
+        Search MIT subjects by topic, skill, or goal.
       </p>
 
       <div className="search-card">

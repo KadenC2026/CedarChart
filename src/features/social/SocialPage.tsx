@@ -46,9 +46,9 @@ export default function SocialPage() {
   return (
     <section className="page social-page">
       <div className="eyebrow">Community</div>
-      <h1>Find your MIT people.</h1>
+      <h1>Connect</h1>
       <p className="lede">
-        TrackMIT uses your plan and interests to point you toward classmates, course communities, and clubs.
+        Find classmates, course communities, and clubs.
       </p>
 
       <section
@@ -103,7 +103,7 @@ export default function SocialPage() {
       <div className="social-primary-grid">
         <article className="social-feature-card">
           <span className="social-card-kicker">Study together</span>
-          <h2>Meet classmates through Pset Partners</h2>
+          <h2>Pset Partners</h2>
           <p>
             Pset Partners matches MIT students by class, availability, and preferred group style. MIT login is required.
           </p>
@@ -124,7 +124,7 @@ export default function SocialPage() {
 
         <article className="social-feature-card">
           <span className="social-card-kicker">Course communities</span>
-          <h2>Continue from the classes you chose</h2>
+          <h2>From your courses</h2>
           <p>Open current course sites or MIT Canvas to find the communication spaces your instructors use.</p>
           {uniqueCourses.some((course) => courseWebsiteFor(course.courseId)) && (
             <div className="social-course-sites">
@@ -148,7 +148,7 @@ export default function SocialPage() {
       <div className="social-section-heading">
         <div>
           <span className="social-card-kicker">Clubs for you</span>
-          <h2>Meet clubs picked for you</h2>
+          <h2>Recommended clubs</h2>
         </div>
         <a href="https://studentlife.mit.edu/campus-communities/student-activities/" target="_blank" rel="noreferrer">
           MIT Student Activities ↗

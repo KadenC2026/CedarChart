@@ -52,8 +52,8 @@ export default function PetitionAdvisor({ catalog }: { catalog: RemoteCourse[] }
 
   return (
     <section className="petition-advisor">
-      <div className="eyebrow">Preparation check</div>
-      <h2>Courses you may be ready to discuss skipping</h2>
+      <div className="eyebrow">Preparation</div>
+      <h2>Possible waivers</h2>
       <p className="data-note">
         Describe prior coursework, exams, or projects. TrackMIT compares it with catalog descriptions and your plan.
       </p>
