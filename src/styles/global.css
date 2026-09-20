@@ -33,7 +33,6 @@ a { color: inherit; }
 .page { max-width: 1180px; margin: 0 auto; padding: 64px 24px 80px; }
 .hero-page { max-width: 900px; }
 .eyebrow { color: var(--green); font-weight: 800; text-transform: uppercase; font-size: 12px; letter-spacing: .12em; }
-.release-badge { display:inline-block; margin-left:8px; padding:4px 7px; border-radius:999px; background:var(--green); color:white; font-size:10px; letter-spacing:.08em; vertical-align:middle; }
 h1 { font-size: clamp(40px, 6vw, 68px); line-height: .98; letter-spacing: -.055em; margin: 12px 0 20px; }
 h2 { letter-spacing: -.025em; }
 .lede { color: var(--muted); font-size: 20px; line-height: 1.55; max-width: 720px; }
@@ -130,6 +129,7 @@ textarea:focus, input:focus, select:focus { border-color: var(--green); box-shad
 .course-result-main { flex:1; border:0; background:transparent; text-align:left; display:grid; grid-template-columns:80px 1fr auto; gap:10px; padding:12px 4px; cursor:pointer; }
 .course-result-main span { color:var(--ink); }
 .course-result-main small { color:var(--muted); }
+.course-site-link { color:var(--green); font-size:11px; font-weight:850; padding:7px 3px; white-space:nowrap; }
 .add-course-button { border:0; border-radius:9px; background:var(--green-soft); color:var(--green); padding:7px 10px; font-weight:800; cursor:pointer; }
 .requirement-summary { margin-top:16px; display:grid; gap:8px; }
 .progress-track { height:10px; border-radius:999px; background:#ece8df; overflow:hidden; }
@@ -554,10 +554,6 @@ button:disabled { cursor: default; opacity: .65; }
   align-items: center;
   gap: 10px;
 }
-.course-map-floating-search .release-badge {
-  margin-left: 0;
-  box-shadow: 0 1px 6px rgba(32,33,36,.16);
-}
 .course-map-mini-brand {
   border: 0;
   background: #fff;
@@ -695,9 +691,13 @@ button:disabled { cursor: default; opacity: .65; }
   line-height: 1.45;
   font-size: 13px;
 }
-.course-map-info-card > a {
-  display: inline-block;
+.course-map-external-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
   margin-top: 14px;
+}
+.course-map-external-links a {
   color: var(--green);
   font-weight: 700;
 }
@@ -729,6 +729,10 @@ button:disabled { cursor: default; opacity: .65; }
 }
 
 @media (max-width: 680px) {
+  .topbar { padding: 0 12px; }
+  .brand { font-size: 20px; }
+  .topbar nav { gap: 2px; }
+  .topbar nav a { padding: 8px 6px; font-size: 14px; }
   .course-map-floating-search {
     right: 12px;
     left: 12px;
@@ -1245,6 +1249,13 @@ button:disabled { cursor: default; opacity: .65; }
 .course-next-card .text-button {
   font-size: 11px;
   padding-top: 7px;
+}
+.course-next-website {
+  display: inline-block;
+  margin: 7px 0 0 10px;
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 750;
 }
 
 

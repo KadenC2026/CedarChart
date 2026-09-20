@@ -9,7 +9,7 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <NavLink to="/" className="brand">Cedar</NavLink>
+        <NavLink to="/" className="brand">cedar</NavLink>
         <nav>
           <NavLink to="/" end>Map</NavLink>
           <NavLink to="/planner">Plan</NavLink>

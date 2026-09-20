@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "update:course-sites": "node scripts/update-course-sites.mjs"
   },
   "dependencies": {
     "@xyflow/react": "^12.8.4",

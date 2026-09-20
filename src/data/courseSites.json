@@ -1,0 +1,544 @@
+{
+  "academicYear": "2026-2027",
+  "term": "Fall 2026",
+  "source": "https://student.mit.edu/catalog/index.cgi",
+  "registrarPages": 94,
+  "generatedAt": "2026-09-20T01:19:49.943Z",
+  "sites": {
+    "1.818": {
+      "registrarUrl": "http://web.mit.edu/10.391J/www/",
+      "sourcePage": "https://student.mit.edu/catalog/m1c.html",
+      "url": "https://web.mit.edu/10.391J/www/"
+    },
+    "1.C57": {
+      "registrarUrl": "https://bit.ly/4uD4sXH",
+      "sourcePage": "https://student.mit.edu/catalog/m1c.html",
+      "url": "https://mysloan.mit.edu/login?ReturnURL=%2FSPD-SSO.aspx%3FReturnUrl%3D%252Fv2%252Fdirectories%252Fcourses%252Fview%252F32271%253Fcriteria%253DPageIndex%253A0%252526%252526SearchType%253AFreeForm%252526%252526ResultsFormat%253Acards%252526%252526Columns%253ATerm%252CCategory%252CHalf%252CDelivery%252CCourseName%252CUnits%252CCapacity%252CSessions%252CFaculty%252CSyllabus%252526%252526FreeFormSearchText%253A15.C57%252526%252526TermID%253A188%252526%252526FavoriteCoursesOnly%253AFalse"
+    },
+    "1.C571": {
+      "registrarUrl": "https://bit.ly/3RQnpYh",
+      "sourcePage": "https://student.mit.edu/catalog/m1c.html",
+      "url": "https://mysloan.mit.edu/login?ReturnURL=%2FSPD-SSO.aspx%3FReturnUrl%3D%252Fv2%252Fdirectories%252Fcourses%252Fview%252F32284%253Fcriteria%253DPageIndex%253A0%252526%252526SearchType%253AFreeForm%252526%252526ResultsFormat%253Acards%252526%252526Columns%253ATerm%252CCategory%252CHalf%252CDelivery%252CCourseName%252CUnits%252CCapacity%252CSessions%252CFaculty%252CSyllabus%252526%252526FreeFormSearchText%253A15.C571%252526%252526TermID%253A188%252526%252526FavoriteCoursesOnly%253AFalse"
+    },
+    "2.65": {
+      "registrarUrl": "http://web.mit.edu/10.391J/www/",
+      "sourcePage": "https://student.mit.edu/catalog/m2b.html",
+      "url": "https://web.mit.edu/10.391J/www/"
+    },
+    "3.43": {
+      "registrarUrl": "https://canvas.mit.edu/courses/22542",
+      "sourcePage": "https://student.mit.edu/catalog/m3a.html",
+      "url": "https://canvas.mit.edu/courses/22542"
+    },
+    "4.140": {
+      "registrarUrl": "https://fab.cba.mit.edu/classes/MAS.863",
+      "sourcePage": "https://student.mit.edu/catalog/m4a.html",
+      "url": "https://fab.cba.mit.edu/classes/MAS.863/"
+    },
+    "5.S00": {
+      "registrarUrl": "https://chemistry.mit.edu/special-topics-in-chemistry-5-s00/",
+      "sourcePage": "https://student.mit.edu/catalog/m5b.html",
+      "url": "https://chemistry.mit.edu/special-topics-in-chemistry-5-s00/"
+    },
+    "6.100A": {
+      "registrarUrl": "https://www.eecs.mit.edu/changes-to-6-100a-b-l/#___READ_THIS_to_learn_about_recent_changes_to_6.100A_6.100B_6.100L",
+      "sourcePage": "https://student.mit.edu/catalog/m6a.html",
+      "url": "https://www.eecs.mit.edu/changes-to-6-100a-b-l/#___READ_THIS_to_learn_about_recent_changes_to_6.100A_6.100B_6.100L"
+    },
+    "6.100B": {
+      "registrarUrl": "https://www.eecs.mit.edu/changes-to-6-100a-b-l/#___READ_THIS_to_learn_about_recent_changes_to_6.100A_6.100B_6.100L",
+      "sourcePage": "https://student.mit.edu/catalog/m6a.html",
+      "url": "https://www.eecs.mit.edu/changes-to-6-100a-b-l/#___READ_THIS_to_learn_about_recent_changes_to_6.100A_6.100B_6.100L"
+    },
+    "6.100L": {
+      "registrarUrl": "https://www.eecs.mit.edu/changes-to-6-100a-b-l/#___READ_THIS_to_learn_about_recent_changes_to_6.100A_6.100B_6.100L",
+      "sourcePage": "https://student.mit.edu/catalog/m6a.html",
+      "url": "https://www.eecs.mit.edu/changes-to-6-100a-b-l/#___READ_THIS_to_learn_about_recent_changes_to_6.100A_6.100B_6.100L"
+    },
+    "6.1010": {
+      "registrarUrl": "https://py.mit.edu/",
+      "sourcePage": "https://student.mit.edu/catalog/m6a.html",
+      "url": "https://py.mit.edu/fall26"
+    },
+    "6.3900": {
+      "registrarUrl": "https://introml.mit.edu/?from=registrar",
+      "sourcePage": "https://student.mit.edu/catalog/m6c.html",
+      "url": "https://introml.mit.edu/fall26"
+    },
+    "6.3950": {
+      "registrarUrl": "https://canvas.mit.edu/courses/16588",
+      "sourcePage": "https://student.mit.edu/catalog/m6c.html",
+      "url": "https://canvas.mit.edu/courses/16588"
+    },
+    "6.4210": {
+      "registrarUrl": "http://manipulation.mit.edu/",
+      "sourcePage": "https://student.mit.edu/catalog/m6d.html",
+      "url": "https://manipulation.mit.edu/"
+    },
+    "6.4212": {
+      "registrarUrl": "http://manipulation.mit.edu/",
+      "sourcePage": "https://student.mit.edu/catalog/m6d.html",
+      "url": "https://manipulation.mit.edu/"
+    },
+    "6.6500": {
+      "registrarUrl": "https://canvas.mit.edu/courses/22542",
+      "sourcePage": "https://student.mit.edu/catalog/m6b.html",
+      "url": "https://canvas.mit.edu/courses/22542"
+    },
+    "6.9020": {
+      "registrarUrl": "https://fab.cba.mit.edu/classes/MAS.863",
+      "sourcePage": "https://student.mit.edu/catalog/m6e.html",
+      "url": "https://fab.cba.mit.edu/classes/MAS.863/"
+    },
+    "6.C57": {
+      "registrarUrl": "https://bit.ly/4uD4sXH",
+      "sourcePage": "https://student.mit.edu/catalog/m6e.html",
+      "url": "https://mysloan.mit.edu/login?ReturnURL=%2FSPD-SSO.aspx%3FReturnUrl%3D%252Fv2%252Fdirectories%252Fcourses%252Fview%252F32271%253Fcriteria%253DPageIndex%253A0%252526%252526SearchType%253AFreeForm%252526%252526ResultsFormat%253Acards%252526%252526Columns%253ATerm%252CCategory%252CHalf%252CDelivery%252CCourseName%252CUnits%252CCapacity%252CSessions%252CFaculty%252CSyllabus%252526%252526FreeFormSearchText%253A15.C57%252526%252526TermID%253A188%252526%252526FavoriteCoursesOnly%253AFalse"
+    },
+    "6.C571": {
+      "registrarUrl": "https://bit.ly/3RQnpYh",
+      "sourcePage": "https://student.mit.edu/catalog/m6e.html",
+      "url": "https://mysloan.mit.edu/login?ReturnURL=%2FSPD-SSO.aspx%3FReturnUrl%3D%252Fv2%252Fdirectories%252Fcourses%252Fview%252F32284%253Fcriteria%253DPageIndex%253A0%252526%252526SearchType%253AFreeForm%252526%252526ResultsFormat%253Acards%252526%252526Columns%253ATerm%252CCategory%252CHalf%252CDelivery%252CCourseName%252CUnits%252CCapacity%252CSessions%252CFaculty%252CSyllabus%252526%252526FreeFormSearchText%253A15.C571%252526%252526TermID%253A188%252526%252526FavoriteCoursesOnly%253AFalse"
+    },
+    "6.S057": {
+      "registrarUrl": "https://www.eecs.mit.edu/academics/subject-updates/subject-updates-fall-2026/#6_S057",
+      "sourcePage": "https://student.mit.edu/catalog/m6e.html",
+      "url": "https://www.eecs.mit.edu/academics/subject-updates/subject-updates-fall-2026/#6_S057"
+    },
+    "6.S630": {
+      "registrarUrl": "https://gradel.mit.edu/class/6-s630/",
+      "sourcePage": "https://student.mit.edu/catalog/m6e.html",
+      "url": "https://gradel.mit.edu/class/6-s630/"
+    },
+    "6.S660": {
+      "registrarUrl": "https://gradel.mit.edu/class/6-s660/",
+      "sourcePage": "https://student.mit.edu/catalog/m6e.html",
+      "url": "https://gradel.mit.edu/class/6-s660/"
+    },
+    "6.S950": {
+      "registrarUrl": "https://agencyai.mit.edu/",
+      "sourcePage": "https://student.mit.edu/catalog/m6e.html",
+      "url": "https://agencyai.mit.edu/"
+    },
+    "6.S951": {
+      "registrarUrl": "https://www.eecs.mit.edu/academics/subject-updates/subject-updates-fall-2026/#6_S951",
+      "sourcePage": "https://student.mit.edu/catalog/m6e.html",
+      "url": "https://www.eecs.mit.edu/academics/subject-updates/subject-updates-fall-2026/#6_S951"
+    },
+    "6.S953": {
+      "registrarUrl": "https://www.eecs.mit.edu/academics/subject-updates/subject-updates-fall-2026/#6_S953",
+      "sourcePage": "https://student.mit.edu/catalog/m6e.html",
+      "url": "https://www.eecs.mit.edu/academics/subject-updates/subject-updates-fall-2026/#6_S953"
+    },
+    "6.S974": {
+      "registrarUrl": "https://www.eecs.mit.edu/academics/subject-updates/subject-updates-fall-2026/#6_S974_also_under_2_S988_and_1_S980",
+      "sourcePage": "https://student.mit.edu/catalog/m6e.html",
+      "url": "https://www.eecs.mit.edu/academics/subject-updates/subject-updates-fall-2026/#6_S974_also_under_2_S988_and_1_S980"
+    },
+    "6.S978": {
+      "registrarUrl": "https://www.eecs.mit.edu/academics/subject-updates/subject-updates-fall-2026/#6_S978",
+      "sourcePage": "https://student.mit.edu/catalog/m6e.html",
+      "url": "https://www.eecs.mit.edu/academics/subject-updates/subject-updates-fall-2026/#6_S978"
+    },
+    "6.S979": {
+      "registrarUrl": "https://www.eecs.mit.edu/academics/subject-updates/subject-updates-fall-2026/#6_S979",
+      "sourcePage": "https://student.mit.edu/catalog/m6e.html",
+      "url": "https://www.eecs.mit.edu/academics/subject-updates/subject-updates-fall-2026/#6_S979"
+    },
+    "6.S980": {
+      "registrarUrl": "https://www.eecs.mit.edu/academics/subject-updates/subject-updates-fall-2026/#6_S980",
+      "sourcePage": "https://student.mit.edu/catalog/m6e.html",
+      "url": "https://www.eecs.mit.edu/academics/subject-updates/subject-updates-fall-2026/#6_S980"
+    },
+    "10.391": {
+      "registrarUrl": "http://web.mit.edu/10.391J/www/",
+      "sourcePage": "https://student.mit.edu/catalog/m10a.html",
+      "url": "https://web.mit.edu/10.391J/www/"
+    },
+    "11.371": {
+      "registrarUrl": "http://web.mit.edu/10.391J/www/",
+      "sourcePage": "https://student.mit.edu/catalog/m11c.html",
+      "url": "https://web.mit.edu/10.391J/www/"
+    },
+    "11.S965": {
+      "registrarUrl": "https://cre.mit.edu/special-topics-11-s965/",
+      "sourcePage": "https://student.mit.edu/catalog/m11c.html",
+      "url": "https://cre.mit.edu/special-topics-11-s965/"
+    },
+    "11.S966": {
+      "registrarUrl": "https://cre.mit.edu/special-topics-11-s966-2/",
+      "sourcePage": "https://student.mit.edu/catalog/m11c.html",
+      "url": "https://cre.mit.edu/special-topics-11-s966-2/"
+    },
+    "11.S967": {
+      "registrarUrl": "https://cre.mit.edu/special-topics-course-11-s967/",
+      "sourcePage": "https://student.mit.edu/catalog/m11c.html",
+      "url": "https://cre.mit.edu/special-topics-course-11-s967/"
+    },
+    "12.113": {
+      "registrarUrl": "http://web.mit.edu/12.113/www/",
+      "sourcePage": "https://student.mit.edu/catalog/m12a.html",
+      "url": "https://web.mit.edu/12.113/www/"
+    },
+    "15.579": {
+      "registrarUrl": "http://web.mit.edu/15.579/www/15.579.html",
+      "sourcePage": "https://student.mit.edu/catalog/m15b.html",
+      "url": "https://okta.mit.edu/oauth2/default/v1/authorize?response_type=code&scope=openid%20email&client_id=0oat4nck66tQax7Cf697&state=c4wBjxO4IfoPapQibyBLVcXHo9o&redirect_uri=https%3A%2F%2Fweb.mit.edu%2F.touchstone&nonce=pdaoDeAGm5ImDlRGLh71tzZL8jzMznfpse4WdM7_uv4&code_challenge=QFd2iiPYuTVLQQk00iIIBvlnvoSwY3toAXl1uOVJuV8&code_challenge_method=S256"
+    },
+    "15.C57": {
+      "registrarUrl": "https://bit.ly/4uD4sXH",
+      "sourcePage": "https://student.mit.edu/catalog/m15c.html",
+      "url": "https://mysloan.mit.edu/login?ReturnURL=%2FSPD-SSO.aspx%3FReturnUrl%3D%252Fv2%252Fdirectories%252Fcourses%252Fview%252F32271%253Fcriteria%253DPageIndex%253A0%252526%252526SearchType%253AFreeForm%252526%252526ResultsFormat%253Acards%252526%252526Columns%253ATerm%252CCategory%252CHalf%252CDelivery%252CCourseName%252CUnits%252CCapacity%252CSessions%252CFaculty%252CSyllabus%252526%252526FreeFormSearchText%253A15.C57%252526%252526TermID%253A188%252526%252526FavoriteCoursesOnly%253AFalse"
+    },
+    "15.C571": {
+      "registrarUrl": "https://bit.ly/3RQnpYh",
+      "sourcePage": "https://student.mit.edu/catalog/m15c.html",
+      "url": "https://mysloan.mit.edu/login?ReturnURL=%2FSPD-SSO.aspx%3FReturnUrl%3D%252Fv2%252Fdirectories%252Fcourses%252Fview%252F32284%253Fcriteria%253DPageIndex%253A0%252526%252526SearchType%253AFreeForm%252526%252526ResultsFormat%253Acards%252526%252526Columns%253ATerm%252CCategory%252CHalf%252CDelivery%252CCourseName%252CUnits%252CCapacity%252CSessions%252CFaculty%252CSyllabus%252526%252526FreeFormSearchText%253A15.C571%252526%252526TermID%253A188%252526%252526FavoriteCoursesOnly%253AFalse"
+    },
+    "15.S05": {
+      "registrarUrl": "https://catapult.mit.edu/programs/energy/",
+      "sourcePage": "https://student.mit.edu/catalog/m15c.html",
+      "url": "https://catapult.mit.edu/programs/energy/"
+    },
+    "15.S13": {
+      "registrarUrl": "https://catapult.mit.edu/programs/bio/",
+      "sourcePage": "https://student.mit.edu/catalog/m15c.html",
+      "url": "https://catapult.mit.edu/programs/bio/"
+    },
+    "18.821": {
+      "registrarUrl": "http://math.mit.edu/classes/18.821/",
+      "sourcePage": "https://student.mit.edu/catalog/m18b.html",
+      "url": "https://canvas.mit.edu/courses/39215"
+    },
+    "21.01": {
+      "registrarUrl": "https://compass.mit.edu/",
+      "sourcePage": "https://student.mit.edu/catalog/m21a.html",
+      "url": "https://compass.mit.edu/"
+    },
+    "21A.500": {
+      "registrarUrl": "https://anthropology.mit.edu/21A.500J_STS.075J_Technology_and_Culture",
+      "sourcePage": "https://student.mit.edu/catalog/m21Aa.html",
+      "url": "https://anthropology.mit.edu/21A.500J_STS.075J_Technology_and_Culture"
+    },
+    "21G.059": {
+      "registrarUrl": "https://languages.mit.edu/areas-of-study/german-studies/",
+      "sourcePage": "https://student.mit.edu/catalog/m21Ga.html",
+      "url": "https://languages.mit.edu/areas-of-study/german-studies/"
+    },
+    "21G.061": {
+      "registrarUrl": "https://lit.mit.edu/21l-024-literature-and-existentialism/",
+      "sourcePage": "https://student.mit.edu/catalog/m21Ga.html",
+      "url": "https://lit.mit.edu/21l-024-literature-and-existentialism/"
+    },
+    "21G.312": {
+      "registrarUrl": "https://languages.mit.edu/areas-of-study/french-studies/",
+      "sourcePage": "https://student.mit.edu/catalog/m21Gd.html",
+      "url": "https://languages.mit.edu/areas-of-study/french-studies/"
+    },
+    "21G.321": {
+      "registrarUrl": "https://lit.mit.edu/21l-624j-childhood-and-youth-in-french-and-francophone-cultures/",
+      "sourcePage": "https://student.mit.edu/catalog/m21Gd.html",
+      "url": "https://lit.mit.edu/21l-624j-childhood-and-youth-in-french-and-francophone-cultures/"
+    },
+    "21G.353": {
+      "registrarUrl": "https://lit.mit.edu/21l-631j-invention-of-french-theory-history-of-transatlantic-intellectual-life-since-1945-taught-in-french/",
+      "sourcePage": "https://student.mit.edu/catalog/m21Gd.html",
+      "url": "https://lit.mit.edu/21l-631j-invention-of-french-theory-history-of-transatlantic-intellectual-life-since-1945-taught-in-french/"
+    },
+    "21G.710": {
+      "registrarUrl": "https://languages.mit.edu/areas-of-study/spanish-studies/",
+      "sourcePage": "https://student.mit.edu/catalog/m21Gt.html",
+      "url": "https://languages.mit.edu/areas-of-study/spanish-studies/"
+    },
+    "21G.734": {
+      "registrarUrl": "https://lit.mit.edu/21l-636j-introduction-to-contemporary-hispanic-literature-and-film/",
+      "sourcePage": "https://student.mit.edu/catalog/m21Gt.html",
+      "url": "https://lit.mit.edu/21l-636j-introduction-to-contemporary-hispanic-literature-and-film-2/"
+    },
+    "21G.820": {
+      "registrarUrl": "https://languages.mit.edu/areas-of-study/portuguese-studies/",
+      "sourcePage": "https://student.mit.edu/catalog/m21Gh.html",
+      "url": "https://languages.mit.edu/areas-of-study/portuguese-studies/"
+    },
+    "21G.S03": {
+      "registrarUrl": "https://languages.mit.edu/semesters/japanese-studies-fall-2026/",
+      "sourcePage": "https://student.mit.edu/catalog/m21Gt.html",
+      "url": "https://languages.mit.edu/semesters/japanese-studies-fall-2026/"
+    },
+    "21L.003": {
+      "registrarUrl": "https://lit.mit.edu/21l-003-reading-fiction/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-003-reading-fiction/"
+    },
+    "21L.004": {
+      "registrarUrl": "https://lit.mit.edu/21l-004-reading-poetry/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-004-reading-poetry/"
+    },
+    "21L.009": {
+      "registrarUrl": "https://lit.mit.edu/21l-009-shakespeare/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-009-shakespeare/"
+    },
+    "21L.010": {
+      "registrarUrl": "https://lit.mit.edu/21l-010j-writing-with-shakespeare/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-010j-writing-with-shakespeare/"
+    },
+    "21L.011": {
+      "registrarUrl": "https://lit.mit.edu/21l-011-the-film-experience/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-011-the-film-experience/"
+    },
+    "21L.017": {
+      "registrarUrl": "https://lit.mit.edu/21l-017-the-art-of-the-probable/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-017-the-art-of-the-probable/"
+    },
+    "21L.020": {
+      "registrarUrl": "https://lit.mit.edu/21l-020j-globalization-the-good-the-bad-and-the-in-between/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-020j-globalization-the-good-the-bad-and-the-in-between/"
+    },
+    "21L.024": {
+      "registrarUrl": "https://lit.mit.edu/21l-024-literature-and-existentialism/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-024-literature-and-existentialism/"
+    },
+    "21L.032": {
+      "registrarUrl": "https://lit.mit.edu/21l-032j-afrofuturism-magical-realism-and-other-otherwise-worlds/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-032j-afrofuturism-magical-realism-and-other-otherwise-worlds/"
+    },
+    "21L.315": {
+      "registrarUrl": "https://lit.mit.edu/21l-315-prizewinners-and-laureates",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-315-prizewinners-and-laureates"
+    },
+    "21L.320": {
+      "registrarUrl": "https://lit.mit.edu/21l-320-big-books/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-320-big-books/"
+    },
+    "21L.325": {
+      "registrarUrl": "https://lit.mit.edu/21l-325-small-wonders/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-325-small-wonders/"
+    },
+    "21L.433": {
+      "registrarUrl": "https://lit.mit.edu/21l-433-film-styles-and-genres/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-433-film-styles-and-genres/"
+    },
+    "21L.435": {
+      "registrarUrl": "https://lit.mit.edu/21l-435-literature-and-film/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-435-literature-and-film/"
+    },
+    "21L.607": {
+      "registrarUrl": "https://lit.mit.edu/21l-607-greek-i/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-607-greek-i/"
+    },
+    "21L.608": {
+      "registrarUrl": "https://lit.mit.edu/21l-608-greek-ii/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-608-greek-ii/"
+    },
+    "21L.613": {
+      "registrarUrl": "https://lit.mit.edu/21l-613-latin-readings/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-613-latin-readings/"
+    },
+    "21L.614": {
+      "registrarUrl": "https://lit.mit.edu/21l-614-advanced-latin-readings/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-614-advanced-latin-readings/"
+    },
+    "21L.624": {
+      "registrarUrl": "https://lit.mit.edu/21l-624j-childhood-and-youth-in-french-and-francophone-cultures/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-624j-childhood-and-youth-in-french-and-francophone-cultures/"
+    },
+    "21L.630": {
+      "registrarUrl": "https://lit.mit.edu/21l-631j-invention-of-french-theory-history-of-transatlantic-intellectual-life-since-1945-taught-in-french/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-631j-invention-of-french-theory-history-of-transatlantic-intellectual-life-since-1945-taught-in-french/"
+    },
+    "21L.636": {
+      "registrarUrl": "https://lit.mit.edu/21l-636j-introduction-to-contemporary-hispanic-literature-and-film/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-636j-introduction-to-contemporary-hispanic-literature-and-film-2/"
+    },
+    "21L.703": {
+      "registrarUrl": "https://lit.mit.edu/21l-703-studies-in-drama/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-703-studies-in-drama/"
+    },
+    "21L.704": {
+      "registrarUrl": "https://lit.mit.edu/21l-704-studies-in-poetry/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-704-studies-in-poetry/"
+    },
+    "21L.705": {
+      "registrarUrl": "https://lit.mit.edu/21l-705-major-authors/",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-705-major-authors/"
+    },
+    "21L.706": {
+      "registrarUrl": "https://lit.mit.edu/21l-706-studies-in-film",
+      "sourcePage": "https://student.mit.edu/catalog/m21La.html",
+      "url": "https://lit.mit.edu/21l-706-studies-in-film/"
+    },
+    "21T.246": {
+      "registrarUrl": "https://lit.mit.edu/21l-703-studies-in-drama/",
+      "sourcePage": "https://student.mit.edu/catalog/m21Ta.html",
+      "url": "https://lit.mit.edu/21l-703-studies-in-drama/"
+    },
+    "21W.042": {
+      "registrarUrl": "https://lit.mit.edu/21l-010j-writing-with-shakespeare/",
+      "sourcePage": "https://student.mit.edu/catalog/m21Wa.html",
+      "url": "https://lit.mit.edu/21l-010j-writing-with-shakespeare/"
+    },
+    "22.811": {
+      "registrarUrl": "http://web.mit.edu/10.391J/www/",
+      "sourcePage": "https://student.mit.edu/catalog/m22c.html",
+      "url": "https://web.mit.edu/10.391J/www/"
+    },
+    "24.133": {
+      "registrarUrl": "https://experientialethics.mit.edu/",
+      "sourcePage": "https://student.mit.edu/catalog/m24a.html",
+      "url": "https://elo.mit.edu/experiential-ethics/"
+    },
+    "CG.041": {
+      "registrarUrl": "https://bit.ly/4uD4sXH",
+      "sourcePage": "https://student.mit.edu/catalog/mCGa.html",
+      "url": "https://mysloan.mit.edu/login?ReturnURL=%2FSPD-SSO.aspx%3FReturnUrl%3D%252Fv2%252Fdirectories%252Fcourses%252Fview%252F32271%253Fcriteria%253DPageIndex%253A0%252526%252526SearchType%253AFreeForm%252526%252526ResultsFormat%253Acards%252526%252526Columns%253ATerm%252CCategory%252CHalf%252CDelivery%252CCourseName%252CUnits%252CCapacity%252CSessions%252CFaculty%252CSyllabus%252526%252526FreeFormSearchText%253A15.C57%252526%252526TermID%253A188%252526%252526FavoriteCoursesOnly%253AFalse"
+    },
+    "CG.042": {
+      "registrarUrl": "https://bit.ly/3RQnpYh",
+      "sourcePage": "https://student.mit.edu/catalog/mCGa.html",
+      "url": "https://mysloan.mit.edu/login?ReturnURL=%2FSPD-SSO.aspx%3FReturnUrl%3D%252Fv2%252Fdirectories%252Fcourses%252Fview%252F32284%253Fcriteria%253DPageIndex%253A0%252526%252526SearchType%253AFreeForm%252526%252526ResultsFormat%253Acards%252526%252526Columns%253ATerm%252CCategory%252CHalf%252CDelivery%252CCourseName%252CUnits%252CCapacity%252CSessions%252CFaculty%252CSyllabus%252526%252526FreeFormSearchText%253A15.C571%252526%252526TermID%253A188%252526%252526FavoriteCoursesOnly%253AFalse"
+    },
+    "CG.052": {
+      "registrarUrl": "https://bit.ly/4uD4sXH",
+      "sourcePage": "https://student.mit.edu/catalog/mCGa.html",
+      "url": "https://mysloan.mit.edu/login?ReturnURL=%2FSPD-SSO.aspx%3FReturnUrl%3D%252Fv2%252Fdirectories%252Fcourses%252Fview%252F32271%253Fcriteria%253DPageIndex%253A0%252526%252526SearchType%253AFreeForm%252526%252526ResultsFormat%253Acards%252526%252526Columns%253ATerm%252CCategory%252CHalf%252CDelivery%252CCourseName%252CUnits%252CCapacity%252CSessions%252CFaculty%252CSyllabus%252526%252526FreeFormSearchText%253A15.C57%252526%252526TermID%253A188%252526%252526FavoriteCoursesOnly%253AFalse"
+    },
+    "CG.053": {
+      "registrarUrl": "https://bit.ly/3RQnpYh",
+      "sourcePage": "https://student.mit.edu/catalog/mCGa.html",
+      "url": "https://mysloan.mit.edu/login?ReturnURL=%2FSPD-SSO.aspx%3FReturnUrl%3D%252Fv2%252Fdirectories%252Fcourses%252Fview%252F32284%253Fcriteria%253DPageIndex%253A0%252526%252526SearchType%253AFreeForm%252526%252526ResultsFormat%253Acards%252526%252526Columns%253ATerm%252CCategory%252CHalf%252CDelivery%252CCourseName%252CUnits%252CCapacity%252CSessions%252CFaculty%252CSyllabus%252526%252526FreeFormSearchText%253A15.C571%252526%252526TermID%253A188%252526%252526FavoriteCoursesOnly%253AFalse"
+    },
+    "CG.078": {
+      "registrarUrl": "https://bit.ly/4uD4sXH",
+      "sourcePage": "https://student.mit.edu/catalog/mCGa.html",
+      "url": "https://mysloan.mit.edu/login?ReturnURL=%2FSPD-SSO.aspx%3FReturnUrl%3D%252Fv2%252Fdirectories%252Fcourses%252Fview%252F32271%253Fcriteria%253DPageIndex%253A0%252526%252526SearchType%253AFreeForm%252526%252526ResultsFormat%253Acards%252526%252526Columns%253ATerm%252CCategory%252CHalf%252CDelivery%252CCourseName%252CUnits%252CCapacity%252CSessions%252CFaculty%252CSyllabus%252526%252526FreeFormSearchText%253A15.C57%252526%252526TermID%253A188%252526%252526FavoriteCoursesOnly%253AFalse"
+    },
+    "CMS.330": {
+      "registrarUrl": "https://lit.mit.edu/21l-706-studies-in-film",
+      "sourcePage": "https://student.mit.edu/catalog/mCMSa.html",
+      "url": "https://lit.mit.edu/21l-706-studies-in-film/"
+    },
+    "CMS.435": {
+      "registrarUrl": "https://lit.mit.edu/21l-435-literature-and-film/",
+      "sourcePage": "https://student.mit.edu/catalog/mCMSa.html",
+      "url": "https://lit.mit.edu/21l-435-literature-and-film/"
+    },
+    "HST.198": {
+      "registrarUrl": "https://hst.mit.edu/academic-programs/courses",
+      "sourcePage": "https://student.mit.edu/catalog/mHSTa.html",
+      "url": "https://hst.mit.edu/academic-programs/courses"
+    },
+    "IDS.865": {
+      "registrarUrl": "https://aiforimpact.github.io/fall26.html",
+      "sourcePage": "https://aiforimpact.github.io/",
+      "url": "https://aiforimpact.github.io/fall26.html"
+    },
+    "IDS.C57": {
+      "registrarUrl": "https://bit.ly/4uD4sXH",
+      "sourcePage": "https://student.mit.edu/catalog/mIDSa.html",
+      "url": "https://mysloan.mit.edu/login?ReturnURL=%2FSPD-SSO.aspx%3FReturnUrl%3D%252Fv2%252Fdirectories%252Fcourses%252Fview%252F32271%253Fcriteria%253DPageIndex%253A0%252526%252526SearchType%253AFreeForm%252526%252526ResultsFormat%253Acards%252526%252526Columns%253ATerm%252CCategory%252CHalf%252CDelivery%252CCourseName%252CUnits%252CCapacity%252CSessions%252CFaculty%252CSyllabus%252526%252526FreeFormSearchText%253A15.C57%252526%252526TermID%253A188%252526%252526FavoriteCoursesOnly%253AFalse"
+    },
+    "MAS.630": {
+      "registrarUrl": "https://sites.google.com/media.mit.edu/mas-630-2024",
+      "sourcePage": "https://student.mit.edu/catalog/mMASa.html",
+      "url": "https://sites.google.com/media.mit.edu/mas-630-2024"
+    },
+    "MAS.665": {
+      "registrarUrl": "https://aiforimpact.github.io/fall26.html",
+      "sourcePage": "https://aiforimpact.github.io/",
+      "url": "https://aiforimpact.github.io/fall26.html"
+    },
+    "MAS.863": {
+      "registrarUrl": "https://fab.cba.mit.edu/classes/MAS.863",
+      "sourcePage": "https://student.mit.edu/catalog/mMASa.html",
+      "url": "https://fab.cba.mit.edu/classes/MAS.863/"
+    },
+    "SP.200": {
+      "registrarUrl": "https://tll.mit.edu/programming/grad-student-programming/tdf/",
+      "sourcePage": "https://student.mit.edu/catalog/mSPa.html",
+      "url": "https://tll.mit.edu/programming/grad-student-programming/tdf/"
+    },
+    "SP.248": {
+      "registrarUrl": "https://shorturl.at/waODx",
+      "sourcePage": "https://student.mit.edu/catalog/mSPa.html",
+      "url": "https://shorturl.at/waODx"
+    },
+    "SP.251": {
+      "registrarUrl": "https://docs.google.com/document/d/1AtivslruipbczUkBm5El_4MnBQB9lLY-0tyWK2MZjAo/edit?tab=t.0",
+      "sourcePage": "https://student.mit.edu/catalog/mSPa.html",
+      "url": "https://docs.google.com/document/d/1AtivslruipbczUkBm5El_4MnBQB9lLY-0tyWK2MZjAo/edit?tab=t.0"
+    },
+    "SP.252": {
+      "registrarUrl": "https://capd.mit.edu/careers-in-medicine-sp-252/",
+      "sourcePage": "https://student.mit.edu/catalog/mSPa.html",
+      "url": "https://capd.mit.edu/careers-in-medicine-sp-252/"
+    },
+    "SP.259": {
+      "registrarUrl": "https://docs.google.com/document/d/1M1Cf9ziodoQbi19C-Z2IRJT4pDceX2A2/edit?usp=share_link&ouid=112632396347709355178&rtpof=true&sd=true",
+      "sourcePage": "https://student.mit.edu/catalog/mSPa.html",
+      "url": "https://docs.google.com/document/d/1M1Cf9ziodoQbi19C-Z2IRJT4pDceX2A2/edit?usp=share_link&ouid=112632396347709355178&rtpof=true&sd=true"
+    },
+    "STS.021": {
+      "registrarUrl": "http://wgs.mit.edu/wgs-subjects/fall2020/wgs160",
+      "sourcePage": "https://student.mit.edu/catalog/mSTSa.html",
+      "url": "http://wgs.mit.edu/wgs-subjects/fall2020/wgs160"
+    },
+    "STS.075": {
+      "registrarUrl": "https://anthropology.mit.edu/21A.500J_STS.075J_Technology_and_Culture",
+      "sourcePage": "https://student.mit.edu/catalog/mSTSa.html",
+      "url": "https://anthropology.mit.edu/21A.500J_STS.075J_Technology_and_Culture"
+    },
+    "WGS.130": {
+      "registrarUrl": "https://lit.mit.edu/21l-032j-afrofuturism-magical-realism-and-other-otherwise-worlds/",
+      "sourcePage": "https://student.mit.edu/catalog/mWGSa.html",
+      "url": "https://lit.mit.edu/21l-032j-afrofuturism-magical-realism-and-other-otherwise-worlds/"
+    },
+    "WGS.145": {
+      "registrarUrl": "https://lit.mit.edu/21l-020j-globalization-the-good-the-bad-and-the-in-between/",
+      "sourcePage": "https://student.mit.edu/catalog/mWGSa.html",
+      "url": "https://lit.mit.edu/21l-020j-globalization-the-good-the-bad-and-the-in-between/"
+    },
+    "WGS.160": {
+      "registrarUrl": "http://wgs.mit.edu/wgs-subjects/fall2020/wgs160",
+      "sourcePage": "https://student.mit.edu/catalog/mWGSa.html",
+      "url": "http://wgs.mit.edu/wgs-subjects/fall2020/wgs160"
+    },
+    "WGS.228": {
+      "registrarUrl": "http://wgs.mit.edu/wgs-subjects/fall2020/wgs228",
+      "sourcePage": "https://student.mit.edu/catalog/mWGSa.html",
+      "url": "http://wgs.mit.edu/wgs-subjects/fall2020/wgs228"
+    },
+    "EC.731": {
+      "registrarUrl": "https://aiforimpact.github.io/fall26.html",
+      "sourcePage": "https://aiforimpact.github.io/",
+      "url": "https://aiforimpact.github.io/fall26.html"
+    },
+    "MAS.664": {
+      "registrarUrl": "https://aiforimpact.github.io/fall26.html",
+      "sourcePage": "https://aiforimpact.github.io/",
+      "url": "https://aiforimpact.github.io/fall26.html"
+    }
+  }
+}

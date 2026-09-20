@@ -12,6 +12,7 @@ import {
 } from "@xyflow/react";
 import type { RemoteCourse } from "../../domain/types";
 import { useCatalog } from "../../data/catalog";
+import { courseWebsiteFor } from "../../data/courseSites";
 import { referencesCourse } from "../../domain/progression";
 import { useApp } from "../../state/AppContext";
 import { recommendNextCourses, type NextCourseRecommendation } from "../../domain/nextCourses";
@@ -182,6 +183,7 @@ export default function CourseMapPage() {
       ? graph.familyByNodeId.get(selectedFamilyId)
       : undefined;
   const plannedTerms = selected ? plannedTermsFor(selected) : [];
+  const selectedCourseWebsite = selected ? courseWebsiteFor(selected.primary.subject_id) : undefined;
 
   function chooseFamily(family: CourseFamily) {
     setQuery(family.label);
@@ -219,7 +221,7 @@ export default function CourseMapPage() {
       const aiMatch = recommendations.find(({ course }) => matchesFilters(course, filters));
       const aiFamily = aiMatch ? familyByCourseId.get(aiMatch.course.subject_id) : undefined;
       if (aiFamily) {
-        setMapSearchNote("AI search v2 selected a grounded MIT subject.");
+        setMapSearchNote("AI selected a grounded MIT subject.");
         chooseFamily(aiFamily);
         return;
       }
@@ -372,7 +374,7 @@ export default function CourseMapPage() {
     return (
       <section className="course-map-home">
         <div className="course-map-home-inner">
-          <div className="course-map-release">Course map <span className="release-badge">AI search v2</span></div>
+          <div className="course-map-release">Course map</div>
           <div className="course-map-wordmark">cedar</div>
           <form className="course-map-search-home" onSubmit={submit}>
             <span className="course-map-search-icon">⌕</span>
@@ -392,7 +394,7 @@ export default function CourseMapPage() {
             resultCount={browsing ? ranked.length : undefined}
           />
 
-          <p>{mapSearchLoading ? "AI search v2 is matching your request…" : "Search any MIT subject or interest to explore its prerequisite map."}</p>
+          <p>{mapSearchLoading ? "AI is matching your request…" : "Search any MIT subject or interest to explore its prerequisite map."}</p>
           {mapSearchNote && <p className="method-note">{mapSearchNote}</p>}
 
           {suggestions.length > 0 && (
@@ -423,7 +425,6 @@ export default function CourseMapPage() {
     <section className="course-map-shell">
       <div className="course-map-floating-search">
         <button className="course-map-mini-brand" onClick={resetSearch}>cedar</button>
-        <span className="release-badge">AI search v2</span>
         <form onSubmit={submit}>
           <input
             aria-label="Search another MIT course"
@@ -568,6 +569,16 @@ export default function CourseMapPage() {
                       >
                         {alreadyPlanned ? "Added to selected term ✓" : "+ Add to selected term"}
                       </button>
+                      {courseWebsiteFor(recommendation.course.subject_id) && (
+                        <a
+                          className="course-next-website"
+                          href={courseWebsiteFor(recommendation.course.subject_id)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Course website ↗
+                        </a>
+                      )}
                     </article>
                   );
                 })}
@@ -591,7 +602,7 @@ export default function CourseMapPage() {
             <div className="course-map-rule">
               <span>Variant note</span>
               <p>
-                Cedar displays these as one course family in the map. Individual catalog
+                cedar displays these as one course family in the map. Individual catalog
                 versions can still differ in units, offering terms, or exact prerequisite wording.
               </p>
             </div>
@@ -607,11 +618,19 @@ export default function CourseMapPage() {
             <p className="data-note">Already in your plan: {plannedTerms.join(", ")}</p>
           )}
 
-          {selected.primary.url && (
-            <a href={selected.primary.url} target="_blank" rel="noreferrer">
-              Open official catalog ↗
-            </a>
-          )}
+          <div className="course-map-external-links">
+            {selectedCourseWebsite && (
+              <a href={selectedCourseWebsite} target="_blank" rel="noreferrer">
+                Open course website ↗
+              </a>
+            )}
+
+            {selected.primary.url && (
+              <a href={selected.primary.url} target="_blank" rel="noreferrer">
+                Open official catalog ↗
+              </a>
+            )}
+          </div>
         </aside>
       )}
 

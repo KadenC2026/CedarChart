@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Background, Controls, MarkerType, Position, ReactFlow, type Edge, type Node } from "@xyflow/react";
 import type { RemoteCourse } from "../../domain/types";
 import { useCatalog } from "../../data/catalog";
+import { courseWebsiteFor } from "../../data/courseSites";
 import { earnedCourseIds, localId } from "../../domain/requirements";
 import { progressionGroups, referencesCourse } from "../../domain/progression";
 import { plannerTerms, termLabel } from "../../domain/terms";
@@ -128,6 +129,7 @@ export default function PathwayPage() {
   }
 
   const targetPlannedTerms = plannedTermsFor(target);
+  const targetWebsite = courseWebsiteFor(target.subject_id);
 
   return (
     <section className="page progression-page">
@@ -155,7 +157,12 @@ export default function PathwayPage() {
           {targetPlannedTerms.length > 0 && (
             <small className="data-note">Planned: {targetPlannedTerms.join(", ")}</small>
           )}
-          <a className="primary-button link-button" href={target.url ?? "https://catalog.mit.edu/"} target="_blank" rel="noreferrer">
+          {targetWebsite && (
+            <a className="primary-button link-button" href={targetWebsite} target="_blank" rel="noreferrer">
+              Course website ↗
+            </a>
+          )}
+          <a className={(targetWebsite ? "secondary-button " : "primary-button ") + "link-button"} href={target.url ?? "https://catalog.mit.edu/"} target="_blank" rel="noreferrer">
             Official catalog ↗
           </a>
         </div>

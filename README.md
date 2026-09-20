@@ -1,6 +1,6 @@
-# Cedar
+# cedar
 
-Cedar helps MIT students discover interesting courses and understand the prerequisite pathways leading to them.
+cedar helps MIT students discover interesting courses and understand the prerequisite pathways leading to them.
 
 ## What works
 
@@ -47,7 +47,7 @@ OPENAI_MODEL=gpt-5.6-luna
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 ```
 
-The browser never receives the API key. Discovery interprets the student's interests and optional career goal into academic search concepts, retrieves a small candidate set from the checked-in catalog, and asks the model to rank only those candidates. Returned course IDs are validated against that candidate set, and supporting text always comes from the catalog. Logical next-course ranking also uses embeddings when AI is configured. If the API is unavailable, Cedar falls back to deterministic recommendations.
+The browser never receives the API key. Discovery interprets the student's interests and optional career goal into academic search concepts, retrieves a small candidate set from the checked-in catalog, and asks the model to rank only those candidates. Returned course IDs are validated against that candidate set, and supporting text always comes from the catalog. Logical next-course ranking also uses embeddings when AI is configured. If the API is unavailable, cedar falls back to deterministic recommendations.
 
 ## Deploy
 
@@ -94,3 +94,17 @@ See [FireRoad's requirement format](https://fireroad.mit.edu/reference/requireme
 - State persists in this browser. Existing saved plans and completions are retained.
 - Local development does not require serverless API routes for planning, progress,
   graphs, or keyword discovery. AI discovery still uses the deployed server API.
+
+## Course websites
+
+cedar links subjects to their own current course websites when MIT's official
+Subject Listing provides one. The checked-in registry currently covers Fall 2026
+(academic year 2026–2027). Refresh it from the Registrar source with:
+
+```bash
+npm run update:course-sites
+```
+
+The updater validates subject numbers against the checked-in catalog, resolves
+redirects such as semester-specific course URLs, and excludes generic department
+directories that are not dedicated course sites.

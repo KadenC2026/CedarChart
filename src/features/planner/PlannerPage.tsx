@@ -2,6 +2,7 @@ import { type FormEvent, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { RemoteCourse } from "../../domain/types";
 import { useCatalog } from "../../data/catalog";
+import { courseWebsiteFor } from "../../data/courseSites";
 import { earnedCourseIds, evaluateRequirement, isArchivedRequirement, localId, requirementLabel } from "../../domain/requirements";
 import RequirementChecklist from "./RequirementChecklist";
 import PriorCreditPanel from "./PriorCreditPanel";
@@ -85,7 +86,7 @@ export default function PlannerPage() {
       });
       setAiMatches(results);
       setAiNote(results.length
-        ? "AI search v2 matched these subjects to your request."
+        ? "AI matched these subjects to your request."
         : "No AI matches found. Try a broader description.");
     } catch {
       setAiMatches(null);
@@ -99,7 +100,7 @@ export default function PlannerPage() {
     <section className="planner-page planner-workspace-page">
       <div className="planner-compact-header">
         <div>
-          <div className="eyebrow">Your MIT road <span className="release-badge">AI search v2</span></div>
+          <div className="eyebrow">Your MIT road</div>
           <h1>Plan your classes</h1>
         </div>
         <p>Search courses, track requirements, and build your four-year plan.</p>
@@ -137,16 +138,31 @@ export default function PlannerPage() {
           {aiNote && <p className="method-note planner-ai-note">{aiNote}</p>}
           {data && <p className="data-note">{catalog.length.toLocaleString()} imported subjects · {displayedMatches.length.toLocaleString()} matches · Updated {new Date(data.importedAt).toLocaleDateString()}</p>}
           <div className="catalog-results">
-            {displayedMatches.slice(0, limit).map((course) => (
-              <div className="catalog-result" key={course.subject_id}>
-                <button className="course-result-main" onClick={() => openProgression(course.subject_id)}>
-                  <strong>{course.subject_id}</strong>
-                  <span>{course.title}</span>
-                  <small>{aiExplanationById.get(course.subject_id) ?? (course.total_units ? String(course.total_units) + " units" : "")}</small>
-                </button>
-                <button className="add-course-button" onClick={() => addCourse(course)}>+ Add</button>
-              </div>
-            ))}
+            {displayedMatches.slice(0, limit).map((course) => {
+              const courseWebsite = courseWebsiteFor(course.subject_id);
+              return (
+                <div className="catalog-result" key={course.subject_id}>
+                  <button className="course-result-main" onClick={() => openProgression(course.subject_id)}>
+                    <strong>{course.subject_id}</strong>
+                    <span>{course.title}</span>
+                    <small>{aiExplanationById.get(course.subject_id) ?? (course.total_units ? String(course.total_units) + " units" : "")}</small>
+                  </button>
+                  {courseWebsite && (
+                    <a
+                      className="course-site-link"
+                      href={courseWebsite}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`Open ${course.subject_id} course website`}
+                      title="Course website"
+                    >
+                      Site ↗
+                    </a>
+                  )}
+                  <button className="add-course-button" onClick={() => addCourse(course)}>+ Add</button>
+                </div>
+              );
+            })}
           </div>
           {displayedMatches.length > limit && <button className="text-button" onClick={() => setLimit(n => n + 30)}>Show more subjects</button>}
           {data && !displayedMatches.length && <p>No subjects match your search.</p>}
