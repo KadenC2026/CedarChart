@@ -617,6 +617,7 @@ export default function CourseMapPage() {
           nodesConnectable={false}
           panOnDrag
           panOnScroll
+          panOnScrollSpeed={1}
           zoomOnScroll
           zoomOnPinch
           minZoom={0.08}
