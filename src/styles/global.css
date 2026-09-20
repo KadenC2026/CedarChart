@@ -1270,3 +1270,39 @@ button:disabled { cursor: default; opacity: .65; }
 .course-next-panel > input + input {
   margin-top: 7px;
 }
+
+
+.schedule-section-controls {
+  display: grid;
+  gap: 7px;
+  margin-top: 8px;
+}
+.schedule-section-controls label {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+.schedule-section-controls label > span {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  color: var(--green);
+}
+.schedule-section-controls select {
+  min-width: 0;
+  font-size: 11px;
+  padding: 7px 8px;
+}
+.schedule-manual-conflict {
+  margin: 10px 0 0;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: #f8e8e5;
+  color: #8a3b32;
+  font-size: 12px;
+  font-weight: 700;
+}
+.week-grid-block strong {
+  line-height: 1.15;
+}
