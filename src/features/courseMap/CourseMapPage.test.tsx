@@ -169,7 +169,7 @@ describe("course map forest layout", () => {
     const choice = [...graph.logicByNodeId.values()].find((logic) => logic.kind === "any");
 
     expect(choice?.optionFamilies.map((family) => family.id)).toEqual(["1.001", "1.002"]);
-    expect(choice?.instructorPermissionCourseId).toBe("1.003");
+    expect(choice?.instructorPermissionChoiceId).toBe("1.003:1.003");
     expect(choice?.instructorPermissionSelected).toBe(false);
   });
 
@@ -186,6 +186,29 @@ describe("course map forest layout", () => {
     expect(graph.nodes.map((node) => node.id)).toEqual(["1.003"]);
     expect(graph.nodes[0].className).toContain("course-map-permission-waived");
     expect(graph.edges).toEqual([]);
+  });
+
+  it("removes only the approved One Of group while retaining other prerequisites", () => {
+    const catalog = [
+      course("1.001", "Required foundation"),
+      course("1.002", "Option A"),
+      course("1.003", "Option B"),
+      course("1.004", "Destination", "1.001, (1.002/1.003)"),
+    ];
+    const { families } = buildCourseFamilies(catalog);
+    const target = families.find((family) => family.id === "1.004")!;
+    const graph = buildPrerequisiteForest(
+      [target],
+      families,
+      new Map(),
+      new Map(),
+      new Set(),
+      new Set(["1.004:1.004.1"]),
+    );
+
+    expect(graph.nodes.map((node) => node.id)).toEqual(expect.arrayContaining(["1.001", "1.004"]));
+    expect(graph.nodes.map((node) => node.id)).not.toEqual(expect.arrayContaining(["1.002", "1.003"]));
+    expect(graph.edges.map((edge) => `${edge.source}->${edge.target}`)).toContain("1.001->1.004");
   });
 
 

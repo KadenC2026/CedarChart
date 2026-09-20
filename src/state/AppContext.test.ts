@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { reducer } from "./AppContext";
 import { earnedCourseIds } from "../domain/requirements";
 import type { AppState } from "../domain/types";
-const initial: AppState = { completedCourseIds: [], priorCredits: [], instructorPermissionCourseIds: [], selectedCourseId: null, highlightedCourseIds: [], targetCourseId: null, interestQuery: "", careerGoal: "", backgroundExperience: "", recommendations: [], plannedCourses: [], hiddenMapCourseIds: [], priorityCourses: [], selectedRequirementId: null, studentYear: "unspecified" };
+const initial: AppState = { completedCourseIds: [], priorCredits: [], instructorPermissionCourseIds: [], instructorPermissionChoiceIds: [], selectedCourseId: null, highlightedCourseIds: [], targetCourseId: null, interestQuery: "", careerGoal: "", backgroundExperience: "", recommendations: [], plannedCourses: [], hiddenMapCourseIds: [], priorityCourses: [], selectedRequirementId: null, studentYear: "unspecified" };
 describe("shared credit state", () => {
   it("does not treat scheduled classes as earned", () => {
     const state = reducer(initial, { type: "ADD_PLANNED_COURSE", course: { courseId: "18.01", title: "Calculus", term: 0 } });
@@ -32,6 +32,12 @@ describe("instructor permission state", () => {
     expect(state.instructorPermissionCourseIds).toEqual(["mit:6.1910"]);
     state = reducer(state, { type: "TOGGLE_INSTRUCTOR_PERMISSION", courseId: "mit:6.1910" });
     expect(state.instructorPermissionCourseIds).toEqual([]);
+  });
+  it("records and removes a permission waiver for one choice group only", () => {
+    let state = reducer(initial, { type: "TOGGLE_INSTRUCTOR_PERMISSION_CHOICE", choiceId: "6.1910:0.2" });
+    expect(state.instructorPermissionChoiceIds).toEqual(["6.1910:0.2"]);
+    state = reducer(state, { type: "TOGGLE_INSTRUCTOR_PERMISSION_CHOICE", choiceId: "6.1910:0.2" });
+    expect(state.instructorPermissionChoiceIds).toEqual([]);
   });
 });
 

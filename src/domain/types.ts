@@ -84,6 +84,8 @@ export type AppState = {
   priorCredits: PriorCredit[];
   /** Courses for which the student has personally confirmed instructor approval. */
   instructorPermissionCourseIds: string[];
+  /** Specific One Of prerequisite groups waived with instructor approval. */
+  instructorPermissionChoiceIds: string[];
   selectedCourseId: string | null;
   highlightedCourseIds: string[];
   targetCourseId: string | null;
