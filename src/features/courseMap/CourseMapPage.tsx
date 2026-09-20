@@ -77,7 +77,10 @@ function graphNodeSize(node: Node, logic?: LogicNodeData) {
   return { width: 210, height: 82 };
 }
 
-export async function layoutGraphWithElk(graph: GraphData) {
+export async function layoutGraphWithElk(
+  graph: GraphData,
+  plannedTermByFamilyId = new Map<string, number>(),
+) {
   const layout = await elk.layout({
     id: "cedar-course-map",
     layoutOptions: {
@@ -117,13 +120,53 @@ export async function layoutGraphWithElk(graph: GraphData) {
       return [edge.id, sections?.[0]];
     }),
   );
-  return {
-    nodes: graph.nodes.map((node) => {
+  const laidOutNodes = graph.nodes.map((node) => {
       const position = positioned.get(node.id);
       return position?.x == null || position.y == null
         ? node
         : { ...node, position: { x: position.x, y: position.y } };
+    });
+
+  // The planned curriculum is a timeline, so its rows are deliberately a hard
+  // constraint: every scheduled card for a term has the exact same Y coordinate.
+  // Prior-credit cards have no planned term and keep ELK's natural placement.
+  const scheduledTerms = [...new Set(
+    laidOutNodes.flatMap((node) => {
+      const family = graph.familyByNodeId.get(node.id);
+      const term = family ? plannedTermByFamilyId.get(family.id) : undefined;
+      return term == null ? [] : [term];
     }),
+  )].sort((a, b) => a - b);
+  const termY = new Map(scheduledTerms.map((term, index) => [term, index * 168]));
+  const strictTermLayout = termY.size > 0;
+  const nodes = laidOutNodes.map((node) => {
+    const family = graph.familyByNodeId.get(node.id);
+    const term = family ? plannedTermByFamilyId.get(family.id) : undefined;
+    const y = term == null ? node.position.y : termY.get(term)!;
+    return { ...node, position: { ...node.position, y } };
+  });
+
+  // A hard row may place two cards from the same term too close together after
+  // ELK's initial ordering. Shift only horizontally so the row remains exact.
+  for (const term of scheduledTerms) {
+    const row = nodes
+      .filter((node) => {
+        const family = graph.familyByNodeId.get(node.id);
+        return family && plannedTermByFamilyId.get(family.id) === term;
+      })
+      .sort((a, b) => a.position.x - b.position.x);
+    for (let index = 1; index < row.length; index += 1) {
+      const previous = row[index - 1];
+      const current = row[index];
+      const previousSize = graphNodeSize(previous, graph.logicByNodeId.get(previous.id));
+      if (current.position.x < previous.position.x + previousSize.width + 32) {
+        current.position = { ...current.position, x: previous.position.x + previousSize.width + 32 };
+      }
+    }
+  }
+
+  return {
+    nodes,
     edges: graph.edges.map((edge) => {
       const section = routed.get(edge.id);
       const elkPoints = section
@@ -132,7 +175,9 @@ export async function layoutGraphWithElk(graph: GraphData) {
       return {
         ...edge,
         type: "routed",
-        data: { ...(edge.data ?? {}), ...(elkPoints ? { elkPoints } : {}) },
+        // ELK's bend points refer to the original positions. Once strict term
+        // rows move cards, fall back to Cedar's live orthogonal router instead.
+        data: { ...(edge.data ?? {}), ...(strictTermLayout || !elkPoints ? {} : { elkPoints }) },
       };
     }),
   };
@@ -1005,6 +1050,12 @@ export default function CourseMapPage() {
   const plannedTerms = selected ? plannedTermsFor(selected) : [];
   const selectedCreditLabel = selected ? creditLabelByFamilyId.get(selected.id) : undefined;
   const selectedCourseWebsite = selected ? courseWebsiteFor(selected.primary.subject_id) : undefined;
+  const selectedRequiresInstructorPermission = Boolean(
+    selected && /(?:permission of (?:the )?instructor|instructor permission)/i.test(selected.primary.prerequisites ?? ""),
+  );
+  const selectedPermissionRecorded = Boolean(
+    selected && state.instructorPermissionCourseIds.includes(`mit:${selected.primary.subject_id}`),
+  );
 
   useEffect(() => {
     if (!selected) {
@@ -1159,7 +1210,7 @@ export default function CourseMapPage() {
     draggedPositionsRef.current.clear();
     setTidyLoading(true);
     try {
-      const layout = await layoutGraphWithElk(graph);
+      const layout = await layoutGraphWithElk(graph, plannedTermByFamilyId);
       setFlowNodes(layout.nodes);
       setElkEdges(layout.edges);
     } finally {
@@ -1561,6 +1612,25 @@ export default function CourseMapPage() {
             <span>Prerequisites</span>
             <p>{selected.primary.prerequisites || "No listed prerequisites."}</p>
           </div>
+
+          {selectedRequiresInstructorPermission && (
+            <div className="course-map-permission">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={selectedPermissionRecorded}
+                  onChange={() => dispatch({
+                    type: "TOGGLE_INSTRUCTOR_PERMISSION",
+                    courseId: `mit:${selected.primary.subject_id}`,
+                  })}
+                />
+                I have instructor permission for this course
+              </label>
+              <p>
+                This records your confirmation for planning. It does not enroll you or replace the department&apos;s approval process.
+              </p>
+            </div>
+          )}
 
           {selected.primary.corequisites && (
             <div className="course-map-rule">

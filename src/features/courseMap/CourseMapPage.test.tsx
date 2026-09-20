@@ -187,6 +187,23 @@ describe("course map forest layout", () => {
     expect(layout.edges.every((edge) => Array.isArray(edge.data?.elkPoints))).toBe(true);
   });
 
+  it("puts every scheduled term on one exact tidy-map row while leaving credit unconstrained", async () => {
+    const catalog = [
+      course("1.001", "Foundation A"),
+      course("1.002", "Foundation B"),
+      course("1.003", "Destination", "1.001, 1.002"),
+    ];
+    const { families } = buildCourseFamilies(catalog);
+    const targets = families.filter((family) => ["1.001", "1.002", "1.003"].includes(family.id));
+    const terms = new Map([["1.001", 0], ["1.002", 0], ["1.003", 1]]);
+    const layout = await layoutGraphWithElk(buildPrerequisiteForest(targets, families, terms), terms);
+    const positionById = new Map(layout.nodes.map((node) => [node.id, node.position]));
+
+    expect(positionById.get("1.001")!.y).toBe(positionById.get("1.002")!.y);
+    expect(positionById.get("1.003")!.y).not.toBe(positionById.get("1.001")!.y);
+    expect(layout.edges.every((edge) => edge.data?.elkPoints == null)).toBe(true);
+  });
+
   it("orders connected branches to avoid a needless crossing", () => {
     const catalog = [
       course("1.001", "Alpha"),

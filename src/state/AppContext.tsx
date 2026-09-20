@@ -30,6 +30,7 @@ type Action =
   | { type: "SET_REQUIREMENT"; requirementId: string | null }
   | { type: "SET_PRIOR_CREDIT"; credit: PriorCredit }
   | { type: "REMOVE_PRIOR_CREDIT"; courseId: string }
+  | { type: "TOGGLE_INSTRUCTOR_PERMISSION"; courseId: string }
   | { type: "ADD_PRIORITY_COURSE"; course: PriorityCourse }
   | { type: "REMOVE_PRIORITY_COURSE"; courseId: string }
   | { type: "MOVE_PRIORITY_COURSE"; courseId: string; direction: -1 | 1 }
@@ -41,6 +42,7 @@ type Action =
 const initialState: AppState = {
   completedCourseIds: [],
   priorCredits: [],
+  instructorPermissionCourseIds: [],
   selectedCourseId: null,
   highlightedCourseIds: [],
   targetCourseId: null,
@@ -148,6 +150,15 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, priorCredits: [...state.priorCredits.filter(c => c.courseId !== action.credit.courseId), action.credit] };
     case "REMOVE_PRIOR_CREDIT":
       return { ...state, priorCredits: state.priorCredits.filter(c => c.courseId !== action.courseId) };
+    case "TOGGLE_INSTRUCTOR_PERMISSION": {
+      const recorded = state.instructorPermissionCourseIds.includes(action.courseId);
+      return {
+        ...state,
+        instructorPermissionCourseIds: recorded
+          ? state.instructorPermissionCourseIds.filter((id) => id !== action.courseId)
+          : [...state.instructorPermissionCourseIds, action.courseId],
+      };
+    }
     case "ADD_PRIORITY_COURSE": {
       const exists = state.priorityCourses.some(c => c.courseId === action.course.courseId);
       return exists ? state : { ...state, priorityCourses: [...state.priorityCourses, action.course] };

@@ -82,6 +82,8 @@ export type EvaluationResult = {
 export type AppState = {
   completedCourseIds: string[];
   priorCredits: PriorCredit[];
+  /** Courses for which the student has personally confirmed instructor approval. */
+  instructorPermissionCourseIds: string[];
   selectedCourseId: string | null;
   highlightedCourseIds: string[];
   targetCourseId: string | null;

@@ -1251,6 +1251,28 @@ button:disabled { cursor: default; opacity: .65; }
   line-height: 1.45;
   font-size: 13px;
 }
+.course-map-permission {
+  border: 1px solid #bfd2c0;
+  background: #f2f8f1;
+  border-radius: 10px;
+  margin-top: 12px;
+  padding: 11px 12px;
+}
+.course-map-permission label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #173e2c;
+  font-size: 13px;
+  font-weight: 750;
+}
+.course-map-permission input { accent-color: var(--green); }
+.course-map-permission p {
+  color: #4d6253;
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 7px 0 0;
+}
 .course-map-external-links {
   display: flex;
   flex-wrap: wrap;

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { reducer } from "./AppContext";
 import { earnedCourseIds } from "../domain/requirements";
 import type { AppState } from "../domain/types";
-const initial: AppState = { completedCourseIds: [], priorCredits: [], selectedCourseId: null, highlightedCourseIds: [], targetCourseId: null, interestQuery: "", careerGoal: "", backgroundExperience: "", recommendations: [], plannedCourses: [], hiddenMapCourseIds: [], priorityCourses: [], selectedRequirementId: null, studentYear: "unspecified" };
+const initial: AppState = { completedCourseIds: [], priorCredits: [], instructorPermissionCourseIds: [], selectedCourseId: null, highlightedCourseIds: [], targetCourseId: null, interestQuery: "", careerGoal: "", backgroundExperience: "", recommendations: [], plannedCourses: [], hiddenMapCourseIds: [], priorityCourses: [], selectedRequirementId: null, studentYear: "unspecified" };
 describe("shared credit state", () => {
   it("does not treat scheduled classes as earned", () => {
     const state = reducer(initial, { type: "ADD_PLANNED_COURSE", course: { courseId: "18.01", title: "Calculus", term: 0 } });
@@ -23,6 +23,15 @@ describe("shared credit state", () => {
     expect(earnedCourseIds(state).has("18.01")).toBe(true);
     state = reducer(state, { type: "TOGGLE_COMPLETED", courseId: "mit:18.01" });
     expect(earnedCourseIds(state).size).toBe(0);
+  });
+});
+
+describe("instructor permission state", () => {
+  it("records and removes only an explicit instructor approval", () => {
+    let state = reducer(initial, { type: "TOGGLE_INSTRUCTOR_PERMISSION", courseId: "mit:6.1910" });
+    expect(state.instructorPermissionCourseIds).toEqual(["mit:6.1910"]);
+    state = reducer(state, { type: "TOGGLE_INSTRUCTOR_PERMISSION", courseId: "mit:6.1910" });
+    expect(state.instructorPermissionCourseIds).toEqual([]);
   });
 });
 
