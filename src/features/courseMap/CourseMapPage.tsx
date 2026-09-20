@@ -322,10 +322,10 @@ export function buildPrerequisiteForest(
   });
 
   const nodes: Node[] = [];
-  const horizontalGap = 275;
-  const verticalGap = 114;
-  const componentGap = 110;
-  const logicNodeWidth = 16;
+  const horizontalGap = 480;
+  const verticalGap = 150;
+  const componentGap = 150;
+  const logicNodeWidth = 44;
   let nextComponentY = 0;
 
   for (const component of components) {
@@ -360,7 +360,7 @@ export function buildPrerequisiteForest(
     const horizontalPosition = (id: string) => {
       const base = (rank.get(id) ?? 0) * horizontalGap;
       return logicByNodeId.has(id)
-        ? base + horizontalGap - 25 - (logicDepth(id) - 1) * 19
+        ? base + horizontalGap - 92 - (logicDepth(id) - 1) * 64
         : base;
     };
     const layers = new Map<number, string[]>();
@@ -378,7 +378,7 @@ export function buildPrerequisiteForest(
     const maxLayerSize = Math.max(...[...layers.values()].map((layer) => layer.length), 1);
     const componentHeight = Math.max(90, (maxLayerSize - 1) * verticalGap + 90);
     const longEdges = componentEdges.filter((edge) =>
-      horizontalPosition(edge.target) - horizontalPosition(edge.source) > horizontalGap + 1,
+      (rank.get(edge.target) ?? 0) - (rank.get(edge.source) ?? 0) > 1,
     );
     const routingBand = Math.max(componentGap, 70 + longEdges.length * 22);
     const componentTop = nextComponentY + routingBand;
@@ -390,7 +390,10 @@ export function buildPrerequisiteForest(
       layerIds.forEach((id, index) => {
         const family = familyByNodeId.get(id);
         const logic = logicByNodeId.get(id);
-        const position = { x: layer, y: startY + index * verticalGap };
+        // Course cards keep their dependency rank but are gently staggered so the
+        // graph reads as a connected map rather than a rigid spreadsheet grid.
+        const horizontalStagger = family ? ((index % 3) - 1) * 30 : 0;
+        const position = { x: layer + horizontalStagger, y: startY + index * verticalGap };
         nodePosition.set(id, position);
         nodes.push({
           id,

@@ -37,7 +37,8 @@ describe("course map forest layout", () => {
     expect(byId.get("6.100A")!.position.y).toBe(byId.get("6.1010")!.position.y);
     expect(byId.get("18.01")!.position.y).toBe(byId.get("18.02")!.position.y);
     expect(byId.get("18.01")!.position.y).toBeGreaterThan(byId.get("6.100A")!.position.y);
-    expect(byId.get("18.01")!.position.x).toBe(byId.get("6.100A")!.position.x);
+    expect(byId.get("6.100A")!.position.x).toBeLessThan(byId.get("6.1010")!.position.x);
+    expect(byId.get("18.01")!.position.x).toBeLessThan(byId.get("18.02")!.position.x);
   });
 
   it("routes arrows that skip a column through an outer lane", () => {

@@ -930,8 +930,8 @@ button:disabled { cursor: default; opacity: .65; }
   box-shadow: 0 5px 18px rgba(0,0,0,.14);
 }
 .course-map-logic-node {
-  width: 16px !important;
-  height: 70px !important;
+  width: 44px !important;
+  height: 92px !important;
   padding: 0 !important;
   border: 0 !important;
   background: transparent !important;
@@ -966,8 +966,21 @@ button:disabled { cursor: default; opacity: .65; }
   color: var(--green);
   line-height: 1;
 }
-.course-map-logic-content strong { padding: 5px 4px; font-size: 10px; }
-.course-map-logic-content small { padding: 2px 3px; font-size: 7px; }
+.course-map-logic-content strong {
+  min-width: 34px;
+  padding: 6px 7px;
+  border: 1px solid #b7c8bb;
+  font-size: 10px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(36, 84, 58, .12);
+}
+.course-map-logic-content small {
+  min-width: 20px;
+  padding: 3px 5px;
+  border: 1px solid #ccd8cf;
+  font-size: 8px;
+  text-align: center;
+}
 .course-map-logic-any { cursor: pointer; }
 .course-map-logic-any:hover .course-map-logic-content strong { background: var(--green-soft); }
 .course-map-target {
