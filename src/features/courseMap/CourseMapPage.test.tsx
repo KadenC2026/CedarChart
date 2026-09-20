@@ -106,6 +106,7 @@ describe("course map forest layout", () => {
 
     expect(graph.edges.every((edge) => edge.type === "routed")).toBe(true);
     expect(directEdge?.data?.routeLaneOffset).toEqual(expect.any(Number));
+    expect(directEdge?.data?.routeSide).toMatch(/above|below/);
     expect(adjacentEdge?.data?.routeLaneOffset).toBeUndefined();
   });
 

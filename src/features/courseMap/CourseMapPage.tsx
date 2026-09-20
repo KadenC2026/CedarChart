@@ -55,6 +55,7 @@ type LogicNodeData = {
 type RoutedEdgeData = {
   channelRatio?: number;
   routeLaneOffset?: number;
+  routeSide?: "above" | "below";
   sourceExitDistance?: number;
   sourceOffset?: number;
   targetEntryDistance?: number;
@@ -67,6 +68,7 @@ function orderLayersToReduceCrossings(
   layers: Map<number, string[]>,
   edges: Edge[],
   labelFor: (id: string) => string,
+  termFor: (id: string) => number | undefined,
 ) {
   const orderedLayers = [...layers.entries()].sort(([a], [b]) => a - b);
   for (const [, ids] of orderedLayers) ids.sort((a, b) => labelFor(a).localeCompare(labelFor(b), undefined, { numeric: true }));
@@ -101,6 +103,58 @@ function orderLayersToReduceCrossings(
   for (let pass = 0; pass < 3; pass += 1) {
     for (let index = 1; index < orderedLayers.length; index += 1) orderByNeighbors(index, -1);
     for (let index = orderedLayers.length - 2; index >= 0; index -= 1) orderByNeighbors(index, 1);
+  }
+
+  const weightedCost = () => {
+    const positions = new Map<string, { layer: number; position: number }>();
+    orderedLayers.forEach(([, ids], layer) => ids.forEach((id, position) => positions.set(id, { layer, position })));
+    let crossings = 0;
+    let verticalTravel = 0;
+    for (let left = 0; left < edges.length; left += 1) {
+      const a = edges[left];
+      const aSource = positions.get(a.source);
+      const aTarget = positions.get(a.target);
+      if (!aSource || !aTarget) continue;
+      verticalTravel += Math.abs(aSource.position - aTarget.position);
+      for (let right = left + 1; right < edges.length; right += 1) {
+        const b = edges[right];
+        const bSource = positions.get(b.source);
+        const bTarget = positions.get(b.target);
+        if (!bSource || !bTarget || aSource.layer !== bSource.layer || aTarget.layer !== bTarget.layer) continue;
+        if ((aSource.position - bSource.position) * (aTarget.position - bTarget.position) < 0) crossings += 1;
+      }
+    }
+    const termPositions = new Map<number, number[]>();
+    for (const [id, position] of positions) {
+      const term = termFor(id);
+      if (term != null) termPositions.set(term, [...(termPositions.get(term) ?? []), position.position]);
+    }
+    const termMisalignment = [...termPositions.values()].reduce((total, positionsForTerm) => {
+      if (positionsForTerm.length < 2) return total;
+      const mean = positionsForTerm.reduce((sum, position) => sum + position, 0) / positionsForTerm.length;
+      return total + positionsForTerm.reduce((sum, position) => sum + Math.abs(position - mean), 0);
+    }, 0);
+    // Crossings dominate; shorter vertical runs and shared term rows are soft constraints.
+    return crossings * 10_000 + verticalTravel * 8 + termMisalignment * 2;
+  };
+
+  // Local adjacent swaps are a compact deterministic approximation of the
+  // weighted crossing/length/alignment objective used by the Tidy Map action.
+  for (let pass = 0; pass < 5; pass += 1) {
+    let improved = false;
+    for (const [, ids] of orderedLayers) {
+      for (let index = 0; index < ids.length - 1; index += 1) {
+        const before = weightedCost();
+        [ids[index], ids[index + 1]] = [ids[index + 1], ids[index]];
+        const after = weightedCost();
+        if (after < before) {
+          improved = true;
+        } else {
+          [ids[index], ids[index + 1]] = [ids[index + 1], ids[index]];
+        }
+      }
+    }
+    if (!improved) break;
   }
 }
 
@@ -153,7 +207,9 @@ function PrerequisiteEdge({
   const channelX = channelStart + (channelEnd - channelStart) * (data?.channelRatio ?? 0.5);
   const sourceExitX = sourceX + direction * Math.min(data?.sourceExitDistance ?? 58, horizontalDistance * 0.35);
   const targetEntryX = targetX - direction * Math.min(data?.targetEntryDistance ?? 58, horizontalDistance * 0.35);
-  const routeY = Math.min(routedSourceY, routedTargetY) - (data?.routeLaneOffset ?? 0);
+  const routeY = data?.routeSide === "below"
+    ? Math.max(routedSourceY, routedTargetY) + (data?.routeLaneOffset ?? 0)
+    : Math.min(routedSourceY, routedTargetY) - (data?.routeLaneOffset ?? 0);
   const points = data?.routeLaneOffset == null
     ? [
         { x: sourceX, y: routedSourceY },
@@ -473,6 +529,7 @@ export function buildPrerequisiteForest(
       layers,
       componentEdges,
       (id) => familyByNodeId.get(id)?.label ?? logicByNodeId.get(id)?.kind ?? id,
+      (id) => plannedTermByFamilyId.get(id),
     );
 
     const estimatedNodeHeight = (id: string) => {
@@ -584,6 +641,10 @@ export function buildPrerequisiteForest(
       });
     }
 
+    const actualComponentBottom = Math.max(
+      ...[...nodePosition.entries()].map(([id, position]) => position.y + estimatedNodeHeight(id)),
+      componentTop + componentHeight,
+    );
     const sortedEdges = [...componentEdges].sort((a, b) => a.id.localeCompare(b.id));
     const updateEdgeData = (edge: Edge, patch: RoutedEdgeData) => {
       edge.type = "routed";
@@ -655,14 +716,22 @@ export function buildPrerequisiteForest(
         });
       });
     }
-    longEdges.forEach((edge, index) => updateEdgeData(edge, {
-      routeLaneOffset: 54 + index * 24,
-    }));
+    const laneCounts = { above: 0, below: 0 };
+    for (const edge of longEdges) {
+      const sourceY = nodePosition.get(edge.source)?.y ?? componentTop;
+      const targetY = nodePosition.get(edge.target)?.y ?? componentTop;
+      const laneOffset = (side: "above" | "below") => 54 + laneCounts[side] * 24;
+      const travel = (side: "above" | "below") => {
+        const laneY = side === "above"
+          ? componentTop - laneOffset(side)
+          : actualComponentBottom + laneOffset(side);
+        return Math.abs(sourceY - laneY) + Math.abs(targetY - laneY) + laneCounts[side] * 18;
+      };
+      const routeSide = travel("above") <= travel("below") ? "above" : "below";
+      updateEdgeData(edge, { routeSide, routeLaneOffset: laneOffset(routeSide) });
+      laneCounts[routeSide] += 1;
+    }
 
-    const actualComponentBottom = Math.max(
-      ...[...nodePosition.entries()].map(([id, position]) => position.y + estimatedNodeHeight(id)),
-      componentTop + componentHeight,
-    );
     nextComponentY = actualComponentBottom;
   }
 
