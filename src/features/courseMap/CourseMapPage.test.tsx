@@ -41,6 +41,15 @@ describe("course map forest layout", () => {
     expect(byId.get("18.01")!.position.x).toBeLessThan(byId.get("18.02")!.position.x);
   });
 
+  it("uses the planner term color for scheduled course nodes", () => {
+    const catalog = [course("6.100A", "Introduction to Computer Science")];
+    const { families } = buildCourseFamilies(catalog);
+    const graph = buildPrerequisiteForest(families, families, new Map([["6.100A", 5]]));
+
+    expect(graph.nodes[0].className).toContain("course-map-scheduled");
+    expect(graph.nodes[0].className).toContain("term-color-6");
+  });
+
   it("routes arrows that skip a column through an outer lane", () => {
     const catalog = [
       course("1.001", "Foundations"),

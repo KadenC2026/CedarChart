@@ -35,7 +35,7 @@ import {
   matchesFilters,
   type CourseFilters,
 } from "../../domain/courseSearch";
-import { plannerTerms, termLabel } from "../../domain/terms";
+import { plannerTerms, termColorClass, termLabel } from "../../domain/terms";
 import { requestCourseRecommendations } from "../../domain/aiCourseSearch";
 import CourseFilterMenu from "../../components/CourseFilterMenu";
 
@@ -321,6 +321,7 @@ function buildPrerequisiteGraph(
 export function buildPrerequisiteForest(
   targets: CourseFamily[],
   families: CourseFamily[],
+  plannedTermByFamilyId = new Map<string, number>(),
 ): GraphData {
   const familyByNodeId = new Map<string, CourseFamily>();
   const logicByNodeId = new Map<string, LogicNodeData>();
@@ -459,6 +460,7 @@ export function buildPrerequisiteForest(
       layerIds.forEach((id, index) => {
         const family = familyByNodeId.get(id);
         const logic = logicByNodeId.get(id);
+        const plannedTerm = family ? plannedTermByFamilyId.get(family.id) : undefined;
         // Course cards keep their dependency rank but are gently staggered so the
         // graph reads as a connected map rather than a rigid spreadsheet grid.
         const horizontalStagger = family ? ((index % 3) - 1) * 30 : 0;
@@ -471,13 +473,16 @@ export function buildPrerequisiteForest(
           sourcePosition: Position.Right,
           targetPosition: Position.Left,
           className: family
-            ? "course-map-node" + (targetIds.has(id) ? " course-map-target" : "")
+            ? "course-map-node" +
+              (plannedTerm == null ? "" : ` course-map-scheduled ${termColorClass(plannedTerm)}`) +
+              (targetIds.has(id) ? " course-map-target" : "")
             : `course-map-logic-node course-map-logic-${logic?.kind ?? "all"}`,
           data: {
             label: family ? (
               <div className="course-map-node-content">
                 <strong>{family.label}</strong>
                 <span>{family.title}</span>
+                {plannedTerm != null && <small className="course-map-planned-term">Scheduled · {termLabel(plannedTerm)}</small>}
                 {family.members.length > 1 && <small>{family.members.length} variants merged</small>}
               </div>
             ) : logic?.kind === "any" ? (
@@ -639,6 +644,16 @@ export default function CourseMapPage() {
     [state.plannedCourses],
   );
   const scheduledCourseIdSet = useMemo(() => new Set(scheduledCourseIds), [scheduledCourseIds]);
+  const plannedTermByFamilyId = useMemo(() => {
+    const termsByFamily = new Map<string, number>();
+    for (const plannedCourse of state.plannedCourses) {
+      const family = familyByCourseId.get(localId(plannedCourse.courseId));
+      if (!family) continue;
+      const existing = termsByFamily.get(family.id);
+      if (existing == null || plannedCourse.term < existing) termsByFamily.set(family.id, plannedCourse.term);
+    }
+    return termsByFamily;
+  }, [state.plannedCourses, familyByCourseId]);
   const hiddenMapCourseIdSet = useMemo(
     () => new Set(state.hiddenMapCourseIds),
     [state.hiddenMapCourseIds],
@@ -667,9 +682,9 @@ export default function CourseMapPage() {
 
   const graph = useMemo(
     () => (graphTargets.length
-      ? buildPrerequisiteForest(graphTargets, families)
+      ? buildPrerequisiteForest(graphTargets, families, plannedTermByFamilyId)
       : null),
-    [graphTargets, families],
+    [graphTargets, families, plannedTermByFamilyId],
   );
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState<Node>([]);
 
@@ -1241,6 +1256,7 @@ export default function CourseMapPage() {
       <div className="course-map-legend">
         <strong>{graphTargets.length} selected course{graphTargets.length === 1 ? "" : "s"}</strong>
         <span>{graph.familyByNodeId.size} course families in prerequisite map</span>
+        {plannedTermByFamilyId.size > 0 && <span>Scheduled course colors match your plan term</span>}
       </div>
     </section>
   );
