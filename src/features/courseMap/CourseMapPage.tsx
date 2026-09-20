@@ -926,6 +926,11 @@ export default function CourseMapPage() {
     }
     return termsByFamily;
   }, [state.plannedCourses, familyByCourseId]);
+  const completedFamilyIds = useMemo(() => new Set(
+    state.completedCourseIds
+      .map((courseId) => familyByCourseId.get(localId(courseId))?.id)
+      .filter((id): id is string => Boolean(id)),
+  ), [state.completedCourseIds, familyByCourseId]);
   const hiddenMapCourseIdSet = useMemo(
     () => new Set(state.hiddenMapCourseIds),
     [state.hiddenMapCourseIds],
@@ -984,7 +989,11 @@ export default function CourseMapPage() {
         new Set(state.instructorPermissionCourseIds),
         new Set(state.instructorPermissionChoiceIds),
         new Set(state.instructorPermissionPrerequisiteIds),
-        new Set([...plannedTermByFamilyId.keys(), ...creditLabelByFamilyId.keys()]),
+        new Set([
+          ...plannedTermByFamilyId.keys(),
+          ...creditLabelByFamilyId.keys(),
+          ...completedFamilyIds,
+        ]),
       )
       : null),
     [
@@ -995,6 +1004,7 @@ export default function CourseMapPage() {
       state.instructorPermissionCourseIds,
       state.instructorPermissionChoiceIds,
       state.instructorPermissionPrerequisiteIds,
+      completedFamilyIds,
     ],
   );
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState<Node>([]);
