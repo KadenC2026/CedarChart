@@ -4,7 +4,6 @@ import {
   Background,
   Controls,
   MarkerType,
-  MiniMap,
   Position,
   ReactFlow,
   type Edge,
@@ -634,8 +633,7 @@ export default function CourseMapPage() {
           onNodeClick={(_, node) => setSelectedFamilyId(graph.familyByNodeId.get(node.id)?.id ?? null)}
         >
           <Background gap={28} />
-          <Controls showInteractive={false} />
-          <MiniMap pannable zoomable />
+          <Controls position="bottom-right" showInteractive={false} />
         </ReactFlow>
       </div>
 
