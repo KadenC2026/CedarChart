@@ -124,10 +124,10 @@ export default function DiscoveryPage() {
       <div className="eyebrow">
         AI course discovery <span className="release-badge">AI search v2</span>
       </div>
-      <h1>Tell us what interests you. We’ll find where it leads.</h1>
+      <h1>Find your next MIT course.</h1>
       <p className="lede">
-        CedarChart searches the imported MIT catalog, recommends real subjects, and opens a generated
-        progression showing what comes before the course and what it can lead to.
+        Describe what you want to learn or build. CedarChart matches it to real subjects and shows
+        how each course fits into a progression.
       </p>
 
       <div className="search-card">

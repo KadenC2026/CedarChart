@@ -262,11 +262,10 @@ export default function SchedulePage() {
 
   return (
     <section className="page schedule-page">
-      <div className="eyebrow">Schedule lab · experimental</div>
-      <h1>Rank the classes you want, then compare schedules that actually fit.</h1>
+      <div className="eyebrow">Schedule lab</div>
+      <h1>Build a schedule that fits.</h1>
       <p className="lede">
-        Add the subjects you are considering, mark the ones you refuse to drop, and CedarChart
-        reads the published meeting times to show which combinations are possible.
+        Add subjects, set priorities, and compare combinations using published meeting times.
       </p>
       <p className="data-note">
         Meeting times come from the imported FireRoad snapshot, which carries one term of section

@@ -102,7 +102,7 @@ export default function PlannerPage() {
           <div className="eyebrow">Your MIT road <span className="release-badge">AI search v2</span></div>
           <h1>Plan your classes</h1>
         </div>
-        <p>Search courses, track requirements, and build your four-year road without leaving this workspace.</p>
+        <p>Search courses, track requirements, and build your four-year plan.</p>
       </div>
 
       <div className="planner-dashboard">
