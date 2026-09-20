@@ -9,6 +9,7 @@ import PriorCreditPanel from "./PriorCreditPanel";
 import { plannerTerms as terms } from "../../domain/terms";
 import { useApp } from "../../state/AppContext";
 import { requestCourseRecommendations, type GroundedCourseRecommendation } from "../../domain/aiCourseSearch";
+import PetitionAdvisor from "./PetitionAdvisor";
 
 
 export default function PlannerPage() {
@@ -250,6 +251,7 @@ export default function PlannerPage() {
           <div className="planner-credit-wrap">
             <PriorCreditPanel catalog={catalog} />
           </div>
+          <PetitionAdvisor catalog={catalog} />
         </aside>
       </div>
     </section>

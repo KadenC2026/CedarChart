@@ -87,11 +87,22 @@ export type AppState = {
   targetCourseId: string | null;
   interestQuery: string;
   careerGoal: string;
+  backgroundExperience: string;
   recommendations: InterestSearchResult[];
   plannedCourses: PlannedCourse[];
   hiddenMapCourseIds: string[];
   priorityCourses: PriorityCourse[];
   selectedRequirementId: string | null;
+};
+
+export type PetitionSuggestion = {
+  courseId: string;
+  title: string;
+  overlapExplanation: string;
+  petitionQuestion: string;
+  supportingCatalogText: string;
+  prerequisiteFor: string[];
+  recommendationMethod: "AI" | "catalog";
 };
 
 export type PriorCredit = { courseId: string; source: "prior" | "ase" };

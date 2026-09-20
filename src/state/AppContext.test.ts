@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { reducer } from "./AppContext";
 import { earnedCourseIds } from "../domain/requirements";
 import type { AppState } from "../domain/types";
-const initial: AppState = { completedCourseIds: [], priorCredits: [], selectedCourseId: null, highlightedCourseIds: [], targetCourseId: null, interestQuery: "", careerGoal: "", recommendations: [], plannedCourses: [], hiddenMapCourseIds: [], priorityCourses: [], selectedRequirementId: null };
+const initial: AppState = { completedCourseIds: [], priorCredits: [], selectedCourseId: null, highlightedCourseIds: [], targetCourseId: null, interestQuery: "", careerGoal: "", backgroundExperience: "", recommendations: [], plannedCourses: [], hiddenMapCourseIds: [], priorityCourses: [], selectedRequirementId: null };
 describe("shared credit state", () => {
   it("does not treat scheduled classes as earned", () => {
     const state = reducer(initial, { type: "ADD_PLANNED_COURSE", course: { courseId: "18.01", title: "Calculus", term: 0 } });
@@ -30,6 +30,11 @@ describe("search personalization state", () => {
   it("stores the career goal for recommendations on other pages", () => {
     const state = reducer(initial, { type: "SET_CAREER_GOAL", careerGoal: "robotics researcher" });
     expect(state.careerGoal).toBe("robotics researcher");
+  });
+
+  it("stores background experience for petition suggestions", () => {
+    const state = reducer(initial, { type: "SET_BACKGROUND_EXPERIENCE", backgroundExperience: "Built compilers in high school" });
+    expect(state.backgroundExperience).toBe("Built compilers in high school");
   });
 });
 

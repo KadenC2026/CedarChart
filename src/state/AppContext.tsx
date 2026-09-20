@@ -15,6 +15,7 @@ type Action =
   | { type: "TOGGLE_COMPLETED"; courseId: string }
   | { type: "SET_QUERY"; query: string }
   | { type: "SET_CAREER_GOAL"; careerGoal: string }
+  | { type: "SET_BACKGROUND_EXPERIENCE"; backgroundExperience: string }
   | { type: "SET_RECOMMENDATIONS"; results: InterestSearchResult[] }
   | { type: "ADD_PLANNED_COURSE"; course: PlannedCourse }
   | { type: "REMOVE_PLANNED_COURSE"; courseId: string; term: number }
@@ -38,6 +39,7 @@ const initialState: AppState = {
   targetCourseId: null,
   interestQuery: "",
   careerGoal: "",
+  backgroundExperience: "",
   recommendations: [],
   plannedCourses: [],
   hiddenMapCourseIds: [],
@@ -66,6 +68,8 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, interestQuery: action.query };
     case "SET_CAREER_GOAL":
       return { ...state, careerGoal: action.careerGoal };
+    case "SET_BACKGROUND_EXPERIENCE":
+      return { ...state, backgroundExperience: action.backgroundExperience };
     case "SET_RECOMMENDATIONS":
       return { ...state, recommendations: action.results, highlightedCourseIds: action.results.map((r) => r.courseId) };
     case "ADD_PLANNED_COURSE": {
