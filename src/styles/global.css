@@ -33,7 +33,7 @@ a { color: inherit; }
 
 .topbar {
   height: 64px; display: flex; align-items: center; justify-content: space-between;
-  padding: 0 max(24px, calc((100vw - 1180px)/2)); border-bottom: 1px solid var(--border);
+  padding: 0 18px; border-bottom: 1px solid var(--border);
   background: rgba(246,246,244,.96); position: sticky; top: 0; z-index: 1000;
 }
 .brand { font-weight: 800; font-size: 19px; text-decoration: none; letter-spacing: -.02em; }
