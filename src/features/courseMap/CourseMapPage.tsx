@@ -1,12 +1,15 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  BaseEdge,
   Background,
   Controls,
+  getSmoothStepPath,
   MarkerType,
   Position,
   ReactFlow,
   type Edge,
+  type EdgeProps,
   type Node,
 } from "@xyflow/react";
 import type { RemoteCourse } from "../../domain/types";
@@ -37,6 +40,45 @@ type GraphData = {
   edges: Edge[];
   familyByNodeId: Map<string, CourseFamily>;
 };
+
+type RoutedEdge = Edge<{ routeY?: number }, "routed">;
+
+function PrerequisiteEdge({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  markerEnd,
+  style,
+  data,
+}: EdgeProps<RoutedEdge>) {
+  const edgePath = data?.routeY == null
+    ? getSmoothStepPath({
+        sourceX,
+        sourceY,
+        targetX,
+        targetY,
+        sourcePosition,
+        targetPosition,
+        borderRadius: 10,
+        offset: 32,
+      })[0]
+    : [
+        `M ${sourceX} ${sourceY}`,
+        `L ${sourceX + 28} ${sourceY}`,
+        `L ${sourceX + 28} ${data.routeY}`,
+        `L ${targetX - 28} ${data.routeY}`,
+        `L ${targetX - 28} ${targetY}`,
+        `L ${targetX} ${targetY}`,
+      ].join(" ");
+
+  return <BaseEdge id={id} path={edgePath} markerEnd={markerEnd} style={style} />;
+}
+
+const edgeTypes = { routed: PrerequisiteEdge };
 
 function offeringText(course: RemoteCourse) {
   const terms = [
@@ -233,15 +275,18 @@ export function buildPrerequisiteForest(targets: CourseFamily[], families: Cours
 
     const maxLayerSize = Math.max(...[...layers.values()].map((layer) => layer.length), 1);
     const componentHeight = Math.max(90, (maxLayerSize - 1) * verticalGap + 90);
+    const nodePosition = new Map<string, { x: number; y: number }>();
 
     for (const [layer, layerIds] of [...layers.entries()].sort((a, b) => a[0] - b[0])) {
       const layerHeight = Math.max(0, (layerIds.length - 1) * verticalGap);
       const startY = nextComponentY + (componentHeight - layerHeight) / 2;
       layerIds.forEach((id, index) => {
         const family = familyByNodeId.get(id)!;
+        const position = { x: layer * horizontalGap, y: startY + index * verticalGap };
+        nodePosition.set(id, position);
         nodes.push({
           id,
-          position: { x: layer * horizontalGap, y: startY + index * verticalGap },
+          position,
           sourcePosition: Position.Right,
           targetPosition: Position.Left,
           className: "course-map-node" + (targetIds.has(id) ? " course-map-target" : ""),
@@ -256,6 +301,17 @@ export function buildPrerequisiteForest(targets: CourseFamily[], families: Cours
           },
         });
       });
+    }
+
+    let outerLane = 0;
+    for (const edge of componentEdges) {
+      edge.type = "routed";
+      const source = nodePosition.get(edge.source);
+      const target = nodePosition.get(edge.target);
+      if (source && target && target.x - source.x > horizontalGap + 1) {
+        edge.data = { routeY: nextComponentY - 36 - (outerLane % 7) * 18 };
+        outerLane += 1;
+      }
     }
 
     nextComponentY += componentHeight + componentGap;
@@ -611,6 +667,7 @@ export default function CourseMapPage() {
           key={graphTargets.map((family) => family.id).join("|")}
           nodes={graph.nodes}
           edges={graph.edges}
+          edgeTypes={edgeTypes}
           fitView
           fitViewOptions={{ padding: 0.2 }}
           nodesDraggable={false}

@@ -39,4 +39,21 @@ describe("course map forest layout", () => {
     expect(byId.get("18.01")!.position.y).toBeGreaterThan(byId.get("6.100A")!.position.y);
     expect(byId.get("18.01")!.position.x).toBe(byId.get("6.100A")!.position.x);
   });
+
+  it("routes arrows that skip a column through an outer lane", () => {
+    const catalog = [
+      course("1.001", "Foundations"),
+      course("1.002", "Intermediate", "1.001"),
+      course("1.003", "Advanced", "1.001 and 1.002"),
+    ];
+    const { families } = buildCourseFamilies(catalog);
+    const target = families.find((family) => family.id === "1.003")!;
+    const graph = buildPrerequisiteForest([target], families);
+    const directEdge = graph.edges.find((edge) => edge.source === "1.001" && edge.target === "1.003");
+    const adjacentEdge = graph.edges.find((edge) => edge.source === "1.002" && edge.target === "1.003");
+
+    expect(graph.edges.every((edge) => edge.type === "routed")).toBe(true);
+    expect(directEdge?.data?.routeY).toEqual(expect.any(Number));
+    expect(adjacentEdge?.data?.routeY).toBeUndefined();
+  });
 });
