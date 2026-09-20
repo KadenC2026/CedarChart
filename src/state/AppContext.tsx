@@ -14,6 +14,7 @@ type Action =
   | { type: "OPEN_PATHWAY"; courseId: string }
   | { type: "TOGGLE_COMPLETED"; courseId: string }
   | { type: "SET_QUERY"; query: string }
+  | { type: "SET_CAREER_GOAL"; careerGoal: string }
   | { type: "SET_RECOMMENDATIONS"; results: InterestSearchResult[] }
   | { type: "ADD_PLANNED_COURSE"; course: PlannedCourse }
   | { type: "REMOVE_PLANNED_COURSE"; courseId: string; term: number }
@@ -35,6 +36,7 @@ const initialState: AppState = {
   highlightedCourseIds: [],
   targetCourseId: null,
   interestQuery: "",
+  careerGoal: "",
   recommendations: [],
   plannedCourses: [],
   priorityCourses: [],
@@ -60,6 +62,8 @@ export function reducer(state: AppState, action: Action): AppState {
     }
     case "SET_QUERY":
       return { ...state, interestQuery: action.query };
+    case "SET_CAREER_GOAL":
+      return { ...state, careerGoal: action.careerGoal };
     case "SET_RECOMMENDATIONS":
       return { ...state, recommendations: action.results, highlightedCourseIds: action.results.map((r) => r.courseId) };
     case "ADD_PLANNED_COURSE": {

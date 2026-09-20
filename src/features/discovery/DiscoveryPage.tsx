@@ -40,7 +40,6 @@ export default function DiscoveryPage() {
   const { data } = useCatalog();
   const [loading, setLoading] = useState(false);
   const [methodNote, setMethodNote] = useState<string | null>(null);
-  const [careerGoal, setCareerGoal] = useState("");
   const [filters, setFilters] = useState<CourseFilters>(emptyFilters);
 
   const catalog = data?.courses ?? [];
@@ -62,7 +61,7 @@ export default function DiscoveryPage() {
 
   async function discover() {
     const query = state.interestQuery.trim();
-    const semanticQuery = query || careerGoal.trim();
+    const semanticQuery = query || state.careerGoal.trim();
     if (!semanticQuery) return;
     setLoading(true);
     setMethodNote(null);
@@ -73,7 +72,7 @@ export default function DiscoveryPage() {
       const response = await fetch("/api/recommend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, careerGoal }),
+        body: JSON.stringify({ query, careerGoal: state.careerGoal }),
       });
       if (!response.ok) throw new Error("recommendation endpoint unavailable");
       const data = await response.json();
@@ -152,8 +151,8 @@ export default function DiscoveryPage() {
           <label htmlFor="career-goal">Career goal <span>(optional)</span></label>
           <input
             id="career-goal"
-            value={careerGoal}
-            onChange={(event) => setCareerGoal(event.target.value)}
+            value={state.careerGoal}
+            onChange={(event) => dispatch({ type: "SET_CAREER_GOAL", careerGoal: event.target.value })}
             placeholder="e.g. quantitative researcher, ML engineer, theoretical CS"
           />
         </div>
@@ -163,7 +162,7 @@ export default function DiscoveryPage() {
         <button
           className="primary-button"
           onClick={discover}
-          disabled={loading || (!state.interestQuery.trim() && !careerGoal.trim())}
+          disabled={loading || (!state.interestQuery.trim() && !state.careerGoal.trim())}
         >
           {loading ? "Finding courses…" : "Discover courses"}
         </button>

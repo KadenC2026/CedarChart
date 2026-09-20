@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import {
   Background,
@@ -25,9 +25,11 @@ import {
   activeFilterCount,
   departmentOptions,
   emptyFilters,
+  matchesFilters,
   type CourseFilters,
 } from "../../domain/courseSearch";
 import { plannerTerms, termLabel } from "../../domain/terms";
+import { requestCourseRecommendations } from "../../domain/aiCourseSearch";
 import CourseFilterMenu from "../../components/CourseFilterMenu";
 
 type GraphData = {
@@ -151,10 +153,10 @@ export default function CourseMapPage() {
   const [targetFamilyId, setTargetFamilyId] = useState<string | null>(null);
   const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null);
   const [scheduleTerm, setScheduleTerm] = useState(0);
-  const [nextCourseInterests, setNextCourseInterests] = useState("");
-  const [nextCourseCareerGoal, setNextCourseCareerGoal] = useState("");
   const [nextCourseResults, setNextCourseResults] = useState<Array<NextCourseRecommendation & { explanation?: string; method?: string }>>([]);
   const [nextCourseLoading, setNextCourseLoading] = useState(false);
+  const [mapSearchLoading, setMapSearchLoading] = useState(false);
+  const [mapSearchNote, setMapSearchNote] = useState<string | null>(null);
   const normalized = query.trim().toLowerCase();
 
   const departments = useMemo(() => departmentOptions(catalog), [catalog]);
@@ -188,9 +190,9 @@ export default function CourseMapPage() {
     setNextCourseResults([]);
   }
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!families.length) return;
+    if (!families.length || !normalized) return;
 
     // A typed subject number always wins, even when the active filters would hide it.
     const exactCourse = catalog.find(
@@ -200,7 +202,34 @@ export default function CourseMapPage() {
       ? familyByCourseId.get(exactCourse.subject_id)
       : families.find((family) => family.label.toLowerCase() === normalized);
 
-    const family = exactFamily ?? ranked[0];
+    if (exactFamily) {
+      setMapSearchNote(null);
+      chooseFamily(exactFamily);
+      return;
+    }
+
+    setMapSearchLoading(true);
+    setMapSearchNote(null);
+    try {
+      const recommendations = await requestCourseRecommendations({
+        query,
+        careerGoal: state.careerGoal,
+        catalog,
+      });
+      const aiMatch = recommendations.find(({ course }) => matchesFilters(course, filters));
+      const aiFamily = aiMatch ? familyByCourseId.get(aiMatch.course.subject_id) : undefined;
+      if (aiFamily) {
+        setMapSearchNote("AI search v2 selected a grounded MIT subject.");
+        chooseFamily(aiFamily);
+        return;
+      }
+    } catch {
+      setMapSearchNote("AI ranking is unavailable. Using catalog search instead.");
+    } finally {
+      setMapSearchLoading(false);
+    }
+
+    const family = ranked[0];
     if (family) chooseFamily(family);
   }
 
@@ -215,6 +244,7 @@ export default function CourseMapPage() {
     setSelectedFamilyId(null);
     setQuery("");
     setNextCourseResults([]);
+    setMapSearchNote(null);
   }
 
   function addSelectedToSchedule() {
@@ -243,13 +273,14 @@ export default function CourseMapPage() {
   async function findLogicalNextCourses() {
     if (!selected || !data) return;
     setNextCourseLoading(true);
+    setNextCourseResults([]);
 
     const deterministic = recommendNextCourses({
       current: selected.primary,
       catalog,
       requirements: data.requirements,
       state,
-      interests: nextCourseInterests,
+      interests: state.interestQuery,
       limit: 15,
     });
 
@@ -267,8 +298,8 @@ export default function CourseMapPage() {
             title: selected.primary.title,
             description: selected.primary.description,
           },
-          interests: nextCourseInterests,
-          careerGoal: nextCourseCareerGoal,
+          interests: state.interestQuery,
+          careerGoal: state.careerGoal,
           majorLabel: selectedRequirement ? requirementLabel(selectedRequirement) : "",
           candidates: deterministic.map((item) => ({
             subjectId: item.course.subject_id,
@@ -307,6 +338,11 @@ export default function CourseMapPage() {
     }
   }
 
+  useEffect(() => {
+    if (!selected || !data) return;
+    void findLogicalNextCourses();
+  }, [selectedFamilyId, state.interestQuery, state.careerGoal, state.selectedRequirementId]);
+
   function addRecommendationToSchedule(course: RemoteCourse) {
     dispatch({
       type: "ADD_PLANNED_COURSE",
@@ -342,6 +378,7 @@ export default function CourseMapPage() {
           <NavLink to="/schedule">Schedule</NavLink>
         </nav>
         <div className="course-map-home-inner">
+          <div className="course-map-release">Course map <span className="release-badge">AI search v2</span></div>
           <div className="course-map-wordmark">cedar</div>
           <form className="course-map-search-home" onSubmit={submit}>
             <span className="course-map-search-icon">⌕</span>
@@ -349,8 +386,9 @@ export default function CourseMapPage() {
               autoFocus
               aria-label="Search MIT course"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search a class, e.g. 6.1040"
+              onChange={(event) => { setQuery(event.target.value); setMapSearchNote(null); }}
+              placeholder="Search a subject or describe what you want to learn"
+              aria-busy={mapSearchLoading}
             />
           </form>
           <CourseFilterMenu
@@ -360,7 +398,8 @@ export default function CourseMapPage() {
             resultCount={browsing ? ranked.length : undefined}
           />
 
-          <p>Search any MIT subject to explore its prerequisite map.</p>
+          <p>{mapSearchLoading ? "AI search v2 is matching your request…" : "Search any MIT subject or interest to explore its prerequisite map."}</p>
+          {mapSearchNote && <p className="method-note">{mapSearchNote}</p>}
 
           {suggestions.length > 0 && (
             <div className="course-map-suggestions">
@@ -396,15 +435,16 @@ export default function CourseMapPage() {
         </nav>
       <div className="course-map-floating-search">
         <button className="course-map-mini-brand" onClick={resetSearch}>cedar</button>
+        <span className="release-badge">AI search v2</span>
         <form onSubmit={submit}>
           <input
             aria-label="Search another MIT course"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => { setQuery(event.target.value); setMapSearchNote(null); }}
             onFocus={() => setTargetFamilyId(null)}
             placeholder="Search a class"
           />
-          <button type="submit" aria-label="Search">⌕</button>
+          <button type="submit" aria-label="Search" disabled={mapSearchLoading}>{mapSearchLoading ? "…" : "⌕"}</button>
         </form>
       </div>
 
@@ -489,22 +529,17 @@ export default function CourseMapPage() {
                 <small>Recommendations are not prerequisite requirements.</small>
               </div>
             </div>
-            <input
-              value={nextCourseInterests}
-              onChange={(event) => setNextCourseInterests(event.target.value)}
-              placeholder="Interests: pure math, ML, finance, applied math…"
-            />
-            <input
-              value={nextCourseCareerGoal}
-              onChange={(event) => setNextCourseCareerGoal(event.target.value)}
-              placeholder="Career goal: quant research, ML engineer, academia…"
-            />
+            <p className="course-next-context">
+              {state.interestQuery || state.careerGoal
+                ? "Personalized with your Discover interests, career goal, and academic plan."
+                : <>Based on this subject and your academic plan. Add interests on <Link to="/">Discover</Link> for more personalization.</>}
+            </p>
             <button
               className="secondary-button course-next-find"
               onClick={findLogicalNextCourses}
               disabled={nextCourseLoading}
             >
-              {nextCourseLoading ? "Finding logical next courses…" : "Recommend next courses"}
+              {nextCourseLoading ? "Finding logical next courses…" : "Refresh AI recommendations"}
             </button>
 
             {nextCourseResults.length > 0 && (

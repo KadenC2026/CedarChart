@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { RemoteCourse } from "../../domain/types";
 import { useCatalog } from "../../data/catalog";
@@ -7,6 +7,7 @@ import RequirementChecklist from "./RequirementChecklist";
 import PriorCreditPanel from "./PriorCreditPanel";
 import { plannerTerms as terms } from "../../domain/terms";
 import { useApp } from "../../state/AppContext";
+import { requestCourseRecommendations, type GroundedCourseRecommendation } from "../../domain/aiCourseSearch";
 
 
 export default function PlannerPage() {
@@ -19,6 +20,9 @@ export default function PlannerPage() {
   const [limit, setLimit] = useState(30);
   const [activeTerm, setActiveTerm] = useState(0);
   const [showArchived, setShowArchived] = useState(false);
+  const [aiMatches, setAiMatches] = useState<GroundedCourseRecommendation[] | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiNote, setAiNote] = useState<string | null>(null);
   const earned = earnedCourseIds(state);
   const planned = new Set(state.plannedCourses.map(c => localId(c.courseId)));
   const catalogMap = useMemo(() => new Map(catalog.map(c => [c.subject_id, c])), [catalog]);
@@ -36,6 +40,10 @@ export default function PlannerPage() {
         (course.description ?? "").toLowerCase().includes(normalized),
       );
   }, [catalog, query]);
+  const displayedMatches = aiMatches?.map((match) => match.course) ?? matches;
+  const aiExplanationById = new Map(
+    (aiMatches ?? []).map((match) => [match.course.subject_id, match.recommendation.relevanceExplanation]),
+  );
 
   const requirementOptions = useMemo(() =>
     Object.entries(requirements)
@@ -62,11 +70,36 @@ export default function PlannerPage() {
     navigate("/course/" + encodeURIComponent(id));
   }
 
+  async function runAiSearch(event: FormEvent) {
+    event.preventDefault();
+    const requestedQuery = query.trim();
+    if (!requestedQuery || !catalog.length) return;
+
+    setAiLoading(true);
+    setAiNote(null);
+    try {
+      const results = await requestCourseRecommendations({
+        query: requestedQuery,
+        careerGoal: state.careerGoal,
+        catalog,
+      });
+      setAiMatches(results);
+      setAiNote(results.length
+        ? "AI search v2 matched these subjects to your request."
+        : "No AI matches found. Try a broader description.");
+    } catch {
+      setAiMatches(null);
+      setAiNote("AI ranking is unavailable. Showing catalog matches instead.");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   return (
     <section className="planner-page planner-workspace-page">
       <div className="planner-compact-header">
         <div>
-          <div className="eyebrow">Your MIT road</div>
+          <div className="eyebrow">Your MIT road <span className="release-badge">AI search v2</span></div>
           <h1>Plan your classes</h1>
         </div>
         <p>Search courses, track requirements, and build your four-year road without leaving this workspace.</p>
@@ -79,33 +112,44 @@ export default function PlannerPage() {
             <span>Add to {terms[activeTerm]}</span>
           </div>
           <label htmlFor="course-search">Add a course</label>
-          <input
-            id="course-search"
-            value={query}
-            onChange={(event) => { setQuery(event.target.value); setLimit(30); }}
-            placeholder="Search 6.3900, linear algebra, climate…"
-          />
+          <form className="planner-ai-search" onSubmit={runAiSearch}>
+            <input
+              id="course-search"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setLimit(30);
+                setAiMatches(null);
+                setAiNote(null);
+              }}
+              placeholder="Search a subject or describe what you want to learn…"
+            />
+            <button className="secondary-button" type="submit" disabled={aiLoading || !query.trim()}>
+              {aiLoading ? "Searching…" : "AI search"}
+            </button>
+          </form>
           <select aria-label="Term to add courses to" value={activeTerm} onChange={(event) => setActiveTerm(Number(event.target.value))}>
             {terms.map((term, index) => <option value={index} key={term}>{term}</option>)}
           </select>
 
           {!data && !catalogError && <p className="supporting">Loading MIT catalog…</p>}
           {catalogError && <p className="error-note">{catalogError} <button onClick={retry}>Retry</button></p>}
-          {data && <p className="data-note">{catalog.length.toLocaleString()} imported subjects · {matches.length.toLocaleString()} matches · Updated {new Date(data.importedAt).toLocaleDateString()}</p>}
+          {aiNote && <p className="method-note planner-ai-note">{aiNote}</p>}
+          {data && <p className="data-note">{catalog.length.toLocaleString()} imported subjects · {displayedMatches.length.toLocaleString()} matches · Updated {new Date(data.importedAt).toLocaleDateString()}</p>}
           <div className="catalog-results">
-            {matches.slice(0, limit).map((course) => (
+            {displayedMatches.slice(0, limit).map((course) => (
               <div className="catalog-result" key={course.subject_id}>
                 <button className="course-result-main" onClick={() => openProgression(course.subject_id)}>
                   <strong>{course.subject_id}</strong>
                   <span>{course.title}</span>
-                  <small>{course.total_units ? String(course.total_units) + " units" : ""}</small>
+                  <small>{aiExplanationById.get(course.subject_id) ?? (course.total_units ? String(course.total_units) + " units" : "")}</small>
                 </button>
                 <button className="add-course-button" onClick={() => addCourse(course)}>+ Add</button>
               </div>
             ))}
           </div>
-          {matches.length > limit && <button className="text-button" onClick={() => setLimit(n => n + 30)}>Show more subjects</button>}
-          {data && !matches.length && <p>No subjects match your search.</p>}
+          {displayedMatches.length > limit && <button className="text-button" onClick={() => setLimit(n => n + 30)}>Show more subjects</button>}
+          {data && !displayedMatches.length && <p>No subjects match your search.</p>}
         </aside>
 
         <main className="planner-pane planner-road-pane">

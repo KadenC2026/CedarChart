@@ -282,6 +282,19 @@ button:disabled { cursor: default; opacity: .65; }
   font-size: 11px;
 }
 .catalog-search-panel.planner-catalog-pane select { margin-top: 8px; }
+.planner-ai-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px;
+}
+.planner-ai-search .secondary-button {
+  padding: 9px 11px;
+  white-space: nowrap;
+}
+.planner-ai-note {
+  margin: 8px 0 0;
+  font-size: 11px;
+}
 .planner-catalog-pane .data-note {
   margin: 8px 0 4px;
   font-size: 11px;
@@ -447,6 +460,14 @@ button:disabled { cursor: default; opacity: .65; }
   text-align: center;
   position: relative;
 }
+.course-map-release {
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
 .course-map-wordmark {
   font-size: clamp(58px, 9vw, 92px);
   line-height: 1;
@@ -537,6 +558,10 @@ button:disabled { cursor: default; opacity: .65; }
   display: flex;
   align-items: center;
   gap: 10px;
+}
+.course-map-floating-search .release-badge {
+  margin-left: 0;
+  box-shadow: 0 1px 6px rgba(32,33,36,.16);
 }
 .course-map-mini-brand {
   border: 0;
@@ -1175,6 +1200,13 @@ button:disabled { cursor: default; opacity: .65; }
   color: var(--muted);
   font-size: 11px;
 }
+.course-next-context {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.course-next-context a { color: var(--green); font-weight: 750; }
 .course-next-panel > input {
   font-size: 12px;
   padding: 9px 10px;
