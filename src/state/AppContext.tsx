@@ -123,11 +123,13 @@ export function reducer(state: AppState, action: Action): AppState {
 }
 
 const AppContext = createContext<{ state: AppState; dispatch: React.Dispatch<Action> } | null>(null);
+const STORAGE_KEY = "cedar-state";
+const LEGACY_STORAGE_KEY = "cedarchart-state";
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState, (base) => {
     try {
-      const saved = localStorage.getItem("cedarchart-state");
+      const saved = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
       return saved ? { ...base, ...JSON.parse(saved) } : base;
     } catch {
       return base;
@@ -135,7 +137,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
-    localStorage.setItem("cedarchart-state", JSON.stringify(state));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
   }, [state]);
 
   return <AppContext.Provider value={{ state, dispatch }}>{children}</AppContext.Provider>;

@@ -443,13 +443,8 @@ button:disabled { cursor: default; opacity: .65; }
 
 
 /* Google/Maps-inspired prerequisite explorer */
-.course-map-app-shell,
-.course-map-app-shell main {
-  height: 100vh;
-  min-height: 100vh;
-}
 .course-map-home {
-  height: 100vh;
+  height: calc(100vh - 72px);
   display: grid;
   place-items: center;
   background: var(--bg);
@@ -542,7 +537,7 @@ button:disabled { cursor: default; opacity: .65; }
 .course-map-shell {
   position: relative;
   width: 100vw;
-  height: 100vh;
+  height: calc(100vh - 72px);
   background: var(--bg);
   overflow: hidden;
 }
@@ -721,10 +716,10 @@ button:disabled { cursor: default; opacity: .65; }
 }
 .course-map-legend span { color: var(--muted); }
 .course-map-loading {
-  height: 100vh;
+  height: calc(100vh - 72px);
   display: grid;
   place-items: center;
-  background: #fff;
+  background: var(--bg);
 }
 .course-map-shell .react-flow__controls,
 .course-map-shell .react-flow__minimap {
@@ -1117,31 +1112,6 @@ button:disabled { cursor: default; opacity: .65; }
   .week-grid-block { font-size: 9px; }
 }
 
-.course-map-index-nav {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  z-index: 30;
-  display: flex;
-  gap: 6px;
-  background: rgba(255,255,255,.96);
-  border: 1px solid #ddd;
-  border-radius: 999px;
-  padding: 5px;
-  box-shadow: 0 1px 6px rgba(32,33,36,.18);
-}
-.course-map-index-nav a {
-  text-decoration: none;
-  color: #555;
-  font-size: 13px;
-  font-weight: 700;
-  padding: 8px 12px;
-  border-radius: 999px;
-}
-.course-map-index-nav a.active {
-  background: var(--green-soft);
-  color: var(--green);
-}
 .course-map-schedule {
   border-top: 1px solid #eee;
   padding-top: 14px;
@@ -1169,14 +1139,6 @@ button:disabled { cursor: default; opacity: .65; }
   padding: 9px 12px;
   font-size: 12px;
 }
-@media (max-width: 680px) {
-  .course-map-index-nav {
-    top: 74px;
-    right: 12px;
-  }
-}
-
-
 .course-next-panel {
   border-top: 1px solid #eee;
   padding-top: 14px;

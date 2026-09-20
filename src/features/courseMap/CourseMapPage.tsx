@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   Background,
   Controls,
@@ -371,12 +371,6 @@ export default function CourseMapPage() {
   if (!target || !graph) {
     return (
       <section className="course-map-home">
-        <nav className="course-map-index-nav" aria-label="Cedar pages">
-          <NavLink to="/planner">Plan</NavLink>
-          <NavLink to="/">Discover</NavLink>
-          <NavLink to="/map">Map</NavLink>
-          <NavLink to="/schedule">Schedule</NavLink>
-        </nav>
         <div className="course-map-home-inner">
           <div className="course-map-release">Course map <span className="release-badge">AI search v2</span></div>
           <div className="course-map-wordmark">cedar</div>
@@ -427,12 +421,6 @@ export default function CourseMapPage() {
 
   return (
     <section className="course-map-shell">
-      <nav className="course-map-index-nav" aria-label="Cedar pages">
-          <NavLink to="/planner">Plan</NavLink>
-          <NavLink to="/">Discover</NavLink>
-          <NavLink to="/map">Map</NavLink>
-          <NavLink to="/schedule">Schedule</NavLink>
-        </nav>
       <div className="course-map-floating-search">
         <button className="course-map-mini-brand" onClick={resetSearch}>cedar</button>
         <span className="release-badge">AI search v2</span>
@@ -532,7 +520,7 @@ export default function CourseMapPage() {
             <p className="course-next-context">
               {state.interestQuery || state.careerGoal
                 ? "Personalized with your Discover interests, career goal, and academic plan."
-                : <>Based on this subject and your academic plan. Add interests on <Link to="/">Discover</Link> for more personalization.</>}
+                : <>Based on this subject and your academic plan. Add interests on <Link to="/discover">Discover</Link> for more personalization.</>}
             </p>
             <button
               className="secondary-button course-next-find"

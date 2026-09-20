@@ -1,6 +1,6 @@
-# CedarChart
+# Cedar
 
-CedarChart helps MIT students discover interesting courses and understand the prerequisite pathways leading to them.
+Cedar helps MIT students discover interesting courses and understand the prerequisite pathways leading to them.
 
 ## What works
 
@@ -47,7 +47,7 @@ OPENAI_MODEL=gpt-5.6-luna
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 ```
 
-The browser never receives the API key. Discovery interprets the student's interests and optional career goal into academic search concepts, retrieves a small candidate set from the checked-in catalog, and asks the model to rank only those candidates. Returned course IDs are validated against that candidate set, and supporting text always comes from the catalog. Logical next-course ranking also uses embeddings when AI is configured. If the API is unavailable, CedarChart falls back to deterministic recommendations.
+The browser never receives the API key. Discovery interprets the student's interests and optional career goal into academic search concepts, retrieves a small candidate set from the checked-in catalog, and asks the model to rank only those candidates. Returned course IDs are validated against that candidate set, and supporting text always comes from the catalog. Logical next-course ranking also uses embeddings when AI is configured. If the API is unavailable, Cedar falls back to deterministic recommendations.
 
 ## Deploy
 

@@ -13,4 +13,4 @@
 11. Show the remaining prerequisites update.
 12. Open the MIT catalog source.
 
-If AI is unavailable, explain that CedarChart intentionally falls back to deterministic keyword matching rather than failing the demo.
+If AI is unavailable, explain that Cedar intentionally falls back to deterministic keyword matching rather than failing the demo.

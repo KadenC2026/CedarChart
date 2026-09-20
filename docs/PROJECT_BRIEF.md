@@ -1,11 +1,11 @@
-# CedarChart project brief
+# Cedar project brief
 
-CedarChart helps students discover interesting courses and understand the pathways leading to them.
+Cedar helps students discover interesting courses and understand the pathways leading to them.
 
 ## Core journey
 
 1. Student describes an interest.
-2. CedarChart returns relevant supported courses with grounded explanations.
+2. Cedar returns relevant supported courses with grounded explanations.
 3. Student selects a recommendation and shows it on the catalog graph.
 4. The correct course is highlighted.
 5. Student opens the course pathway.

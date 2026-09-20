@@ -321,7 +321,7 @@ export default function SchedulePage() {
               <p className="data-note">
                 Nothing ranked yet. Add subjects here, or drop them in from the{" "}
                 <Link to="/planner">planner</Link> and the{" "}
-                <Link to="/map">course map</Link>.
+                <Link to="/">course map</Link>.
               </p>
             )}
 

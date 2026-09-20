@@ -126,7 +126,7 @@ export default function DiscoveryPage() {
       </div>
       <h1>Find your next MIT course.</h1>
       <p className="lede">
-        Describe what you want to learn or build. CedarChart matches it to real subjects and shows
+        Describe what you want to learn or build. Cedar matches it to real subjects and shows
         how each course fits into a progression.
       </p>
 

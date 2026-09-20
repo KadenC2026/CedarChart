@@ -1,4 +1,4 @@
-# CedarChart coding rules
+# Cedar coding rules
 
 Before editing:
 1. Read docs/PROJECT_BRIEF.md.
