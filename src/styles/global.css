@@ -833,6 +833,16 @@ button:disabled { cursor: default; opacity: .65; }
   box-shadow: 0 8px 24px rgba(0,0,0,.08);
   text-align: left;
 }
+.course-map-suggestions-heading {
+  padding: 9px 16px;
+  border-bottom: 1px solid #eee;
+  background: #f6f8f6;
+  color: var(--green);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
 .course-map-suggestions button {
   width: 100%;
   border: 0;
@@ -888,7 +898,8 @@ button:disabled { cursor: default; opacity: .65; }
   top: 18px;
   left: 18px;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
 }
 .course-map-floating-search form {
   width: min(430px, calc(100vw - 36px));
@@ -917,6 +928,33 @@ button:disabled { cursor: default; opacity: .65; }
   cursor: pointer;
   font-size: 20px;
 }
+.course-map-ai-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #c9d4cc;
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: course-map-spin .75s linear infinite;
+  vertical-align: middle;
+}
+.course-map-floating-status {
+  width: min(430px, calc(100vw - 36px));
+  margin: 7px 0 0;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .95);
+  box-shadow: 0 1px 5px rgba(32, 33, 36, .16);
+  padding: 8px 11px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.course-map-suggestions-floating {
+  width: min(430px, calc(100vw - 36px));
+  max-height: 330px;
+  margin-top: 7px;
+  overflow-y: auto;
+}
+@keyframes course-map-spin { to { transform: rotate(360deg); } }
 .course-map-node {
   width: 210px !important;
   border-radius: 16px !important;
@@ -924,8 +962,10 @@ button:disabled { cursor: default; opacity: .65; }
   background: rgba(255,255,255,.96) !important;
   padding: 11px 13px !important;
   box-shadow: 0 2px 8px rgba(0,0,0,.08);
-  cursor: pointer;
+  cursor: grab;
 }
+.course-map-node:active,
+.course-map-logic-node:active { cursor: grabbing; }
 .course-map-node:hover {
   box-shadow: 0 5px 18px rgba(0,0,0,.14);
 }
@@ -941,7 +981,7 @@ button:disabled { cursor: default; opacity: .65; }
   width: 260px !important;
   height: auto !important;
   min-height: 96px;
-  cursor: pointer;
+  cursor: grab;
 }
 .course-map-choice-content {
   width: 100%;

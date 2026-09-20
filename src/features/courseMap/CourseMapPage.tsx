@@ -10,6 +10,7 @@ import {
   type Edge,
   type EdgeProps,
   type Node,
+  useNodesState,
 } from "@xyflow/react";
 import type { RemoteCourse } from "../../domain/types";
 import { useCatalog } from "../../data/catalog";
@@ -135,6 +136,41 @@ function offeringText(course: RemoteCourse) {
     course.offered_summer && "Summer",
   ].filter(Boolean);
   return terms.length ? terms.join(", ") : "Check catalog";
+}
+
+function CourseSuggestionList({
+  families,
+  source,
+  onChoose,
+  compact = false,
+}: {
+  families: CourseFamily[];
+  source: "ai" | "catalog";
+  onChoose: (family: CourseFamily) => void;
+  compact?: boolean;
+}) {
+  if (!families.length) return null;
+  return (
+    <div
+      className={`course-map-suggestions${compact ? " course-map-suggestions-floating" : ""}`}
+      aria-label={source === "ai" ? "AI course suggestions" : "Catalog course matches"}
+    >
+      <div className="course-map-suggestions-heading">
+        {source === "ai" ? "AI suggestions · choose a course" : "Catalog matches"}
+      </div>
+      {families.map((family) => (
+        <button key={family.id} type="button" onClick={() => onChoose(family)}>
+          <strong>{family.label}</strong>
+          <span>
+            {family.title}
+            {family.members.length > 1
+              ? " · " + family.members.map((course) => course.subject_id).join(", ")
+              : ""}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function familyForPrerequisiteToken(token: string, families: CourseFamily[]) {
@@ -324,7 +360,7 @@ export function buildPrerequisiteForest(
 
   const nodes: Node[] = [];
   const horizontalGap = 480;
-  const verticalGap = 210;
+  const verticalNodeGap = 58;
   const componentGap = 150;
   const logicNodeWidth = (id: string) => logicByNodeId.get(id)?.kind === "any" ? 260 : 44;
   let nextComponentY = 0;
@@ -378,8 +414,19 @@ export function buildPrerequisiteForest(
       );
     }
 
-    const maxLayerSize = Math.max(...[...layers.values()].map((layer) => layer.length), 1);
-    const componentHeight = Math.max(90, (maxLayerSize - 1) * verticalGap + 90);
+    const estimatedNodeHeight = (id: string) => {
+      const logic = logicByNodeId.get(id);
+      if (!logic) return 82;
+      if (logic.kind === "all") return 92;
+      return 56 + Math.ceil(Math.max(1, logic.optionFamilies.length) / 2) * 54;
+    };
+    const layerHeight = (idsInLayer: string[]) =>
+      idsInLayer.reduce((sum, id) => sum + estimatedNodeHeight(id), 0) +
+      Math.max(0, idsInLayer.length - 1) * verticalNodeGap;
+    const componentHeight = Math.max(
+      90,
+      ...[...layers.values()].map(layerHeight),
+    );
     const longEdges = componentEdges.filter((edge) =>
       (rank.get(edge.target) ?? 0) - (rank.get(edge.source) ?? 0) > 1,
     );
@@ -388,15 +435,16 @@ export function buildPrerequisiteForest(
     const nodePosition = new Map<string, { x: number; y: number }>();
 
     for (const [layer, layerIds] of [...layers.entries()].sort((a, b) => a[0] - b[0])) {
-      const layerHeight = Math.max(0, (layerIds.length - 1) * verticalGap);
-      const startY = componentTop + (componentHeight - layerHeight) / 2;
+      const currentLayerHeight = layerHeight(layerIds);
+      let currentY = componentTop + (componentHeight - currentLayerHeight) / 2;
       layerIds.forEach((id, index) => {
         const family = familyByNodeId.get(id);
         const logic = logicByNodeId.get(id);
         // Course cards keep their dependency rank but are gently staggered so the
         // graph reads as a connected map rather than a rigid spreadsheet grid.
         const horizontalStagger = family ? ((index % 3) - 1) * 30 : 0;
-        const position = { x: layer + horizontalStagger, y: startY + index * verticalGap };
+        const position = { x: layer + horizontalStagger, y: currentY };
+        currentY += estimatedNodeHeight(id) + verticalNodeGap;
         nodePosition.set(id, position);
         nodes.push({
           id,
@@ -553,6 +601,8 @@ export default function CourseMapPage() {
   const [nextCourseLoading, setNextCourseLoading] = useState(false);
   const [mapSearchLoading, setMapSearchLoading] = useState(false);
   const [mapSearchNote, setMapSearchNote] = useState<string | null>(null);
+  const [aiSuggestions, setAiSuggestions] = useState<CourseFamily[]>([]);
+  const [suggestionSource, setSuggestionSource] = useState<"ai" | "catalog">("catalog");
   const [choiceExpansionOverrides, setChoiceExpansionOverrides] = useState<Record<string, boolean>>({});
   const normalized = query.trim().toLowerCase();
 
@@ -563,7 +613,9 @@ export default function CourseMapPage() {
     [families, query, filters],
   );
   const browsing = Boolean(normalized) || activeFilterCount(filters) > 0;
-  const suggestions = targetFamilyId || !browsing ? [] : ranked.slice(0, 8);
+  const suggestions = targetFamilyId || !browsing
+    ? []
+    : (aiSuggestions.length ? aiSuggestions : ranked.slice(0, 8));
 
   const target = targetFamilyId
     ? families.find((family) => family.id === targetFamilyId)
@@ -606,6 +658,18 @@ export default function CourseMapPage() {
       : null),
     [graphTargets, families, choiceExpansionOverrides],
   );
+  const [flowNodes, setFlowNodes, onNodesChange] = useNodesState<Node>([]);
+
+  useEffect(() => {
+    setFlowNodes((current) => {
+      if (!graph) return [];
+      const currentPositions = new Map(current.map((node) => [node.id, node.position]));
+      return graph.nodes.map((node) => ({
+        ...node,
+        position: currentPositions.get(node.id) ?? node.position,
+      }));
+    });
+  }, [graph, setFlowNodes]);
 
   const selected =
     selectedFamilyId
@@ -619,6 +683,15 @@ export default function CourseMapPage() {
     setTargetFamilyId(family.id);
     setSelectedFamilyId(family.id);
     setNextCourseResults([]);
+    setAiSuggestions([]);
+    setMapSearchNote(null);
+  }
+
+  function updateMapSearchQuery(value: string) {
+    setQuery(value);
+    setMapSearchNote(null);
+    setAiSuggestions([]);
+    setSuggestionSource("catalog");
   }
 
   async function submit(event: FormEvent) {
@@ -641,17 +714,24 @@ export default function CourseMapPage() {
 
     setMapSearchLoading(true);
     setMapSearchNote(null);
+    setAiSuggestions([]);
     try {
       const recommendations = await requestCourseRecommendations({
         query,
         careerGoal: state.careerGoal,
         catalog,
       });
-      const aiMatch = recommendations.find(({ course }) => matchesFilters(course, filters));
-      const aiFamily = aiMatch ? familyByCourseId.get(aiMatch.course.subject_id) : undefined;
-      if (aiFamily) {
-        setMapSearchNote("AI selected a grounded MIT subject.");
-        chooseFamily(aiFamily);
+      const byFamily = new Map<string, CourseFamily>();
+      for (const { course } of recommendations) {
+        if (!matchesFilters(course, filters)) continue;
+        const family = familyByCourseId.get(course.subject_id);
+        if (family) byFamily.set(family.id, family);
+      }
+      const choices = [...byFamily.values()].slice(0, 8);
+      if (choices.length) {
+        setAiSuggestions(choices);
+        setSuggestionSource("ai");
+        setMapSearchNote(`AI found ${choices.length} grounded MIT course${choices.length === 1 ? "" : "s"}. Choose the best match.`);
         return;
       }
     } catch {
@@ -660,8 +740,8 @@ export default function CourseMapPage() {
       setMapSearchLoading(false);
     }
 
-    const family = ranked[0];
-    if (family) chooseFamily(family);
+    setSuggestionSource("catalog");
+    if (!ranked.length) setMapSearchNote("No grounded MIT subjects matched that search.");
   }
 
   function plannedTermsFor(family: CourseFamily) {
@@ -806,12 +886,14 @@ export default function CourseMapPage() {
           <div className="course-map-release">Course map</div>
           <div className="course-map-wordmark">cedar</div>
           <form className="course-map-search-home" onSubmit={submit}>
-            <span className="course-map-search-icon">⌕</span>
+            <span className="course-map-search-icon" aria-hidden="true">
+              {mapSearchLoading ? <span className="course-map-ai-spinner" /> : "⌕"}
+            </span>
             <input
               autoFocus
               aria-label="Search MIT course"
               value={query}
-              onChange={(event) => { setQuery(event.target.value); setMapSearchNote(null); }}
+              onChange={(event) => updateMapSearchQuery(event.target.value)}
               placeholder="Search a subject or describe what you want to learn"
               aria-busy={mapSearchLoading}
             />
@@ -823,7 +905,9 @@ export default function CourseMapPage() {
             resultCount={browsing ? ranked.length : undefined}
           />
 
-          <p>{mapSearchLoading ? "AI is matching your request…" : "Search any MIT subject or interest to explore its prerequisite map."}</p>
+          <p role="status" aria-live="polite">
+            {mapSearchLoading ? "AI is matching your request…" : "Search any MIT subject or interest to explore its prerequisite map."}
+          </p>
           {mapSearchNote && <p className="method-note">{mapSearchNote}</p>}
 
           {hiddenScheduledCourses.length > 0 && (
@@ -842,21 +926,11 @@ export default function CourseMapPage() {
             </div>
           )}
 
-          {suggestions.length > 0 && (
-            <div className="course-map-suggestions">
-              {suggestions.map((family) => (
-                <button key={family.id} onClick={() => chooseFamily(family)}>
-                  <strong>{family.label}</strong>
-                  <span>
-                    {family.title}
-                    {family.members.length > 1
-                      ? " · " + family.members.map((course) => course.subject_id).join(", ")
-                      : ""}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
+          <CourseSuggestionList
+            families={suggestions}
+            source={suggestionSource}
+            onChoose={chooseFamily}
+          />
 
           {browsing && !suggestions.length && (
             <p className="course-map-empty">No subject matches that search with these filters.</p>
@@ -872,25 +946,37 @@ export default function CourseMapPage() {
         <form onSubmit={submit}>
           <input
             aria-label="Search another MIT course"
+            aria-busy={mapSearchLoading}
             value={query}
-            onChange={(event) => { setQuery(event.target.value); setMapSearchNote(null); }}
+            onChange={(event) => updateMapSearchQuery(event.target.value)}
             onFocus={() => setTargetFamilyId(null)}
             placeholder="Search a class"
           />
-          <button type="submit" aria-label="Search" disabled={mapSearchLoading}>{mapSearchLoading ? "…" : "⌕"}</button>
+          <button type="submit" aria-label="Search" disabled={mapSearchLoading}>
+            {mapSearchLoading ? <span className="course-map-ai-spinner" aria-hidden="true" /> : "⌕"}
+          </button>
         </form>
+        {mapSearchLoading && <p className="course-map-floating-status" role="status">AI is matching…</p>}
+        {!mapSearchLoading && mapSearchNote && <p className="course-map-floating-status">{mapSearchNote}</p>}
+        <CourseSuggestionList
+          families={suggestions}
+          source={suggestionSource}
+          onChoose={chooseFamily}
+          compact
+        />
       </div>
 
       <div className="course-map-canvas">
         <ReactFlow
           key={graphTargets.map((family) => family.id).join("|")}
-          nodes={graph.nodes}
+          nodes={flowNodes}
           edges={graph.edges}
           edgeTypes={edgeTypes}
           fitView
           fitViewOptions={{ padding: 0.2 }}
-          nodesDraggable={false}
+          nodesDraggable
           nodesConnectable={false}
+          onNodesChange={onNodesChange}
           panOnDrag
           panOnScroll
           panOnScrollSpeed={1}
