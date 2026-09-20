@@ -44,6 +44,7 @@ type GraphData = {
   edges: Edge[];
   familyByNodeId: Map<string, CourseFamily>;
   logicByNodeId: Map<string, LogicNodeData>;
+  replacementPositionSourceByNodeId: Map<string, string>;
 };
 
 type LogicNodeData = {
@@ -52,11 +53,11 @@ type LogicNodeData = {
 };
 
 type RoutedEdgeData = {
-  channelX?: number;
-  routeY?: number;
-  sourceExitX?: number;
+  channelRatio?: number;
+  routeLaneOffset?: number;
+  sourceExitDistance?: number;
   sourceOffset?: number;
-  targetEntryX?: number;
+  targetEntryDistance?: number;
   targetOffset?: number;
 };
 
@@ -103,19 +104,28 @@ function PrerequisiteEdge({
 }: EdgeProps<RoutedEdge>) {
   const routedSourceY = sourceY + (data?.sourceOffset ?? 0);
   const routedTargetY = targetY + (data?.targetOffset ?? 0);
-  const points = data?.routeY == null
+  const direction = Math.sign(targetX - sourceX) || 1;
+  const horizontalDistance = Math.abs(targetX - sourceX);
+  const elbowClearance = Math.min(86, Math.max(34, horizontalDistance * 0.2));
+  const channelStart = sourceX + direction * elbowClearance;
+  const channelEnd = targetX - direction * elbowClearance;
+  const channelX = channelStart + (channelEnd - channelStart) * (data?.channelRatio ?? 0.5);
+  const sourceExitX = sourceX + direction * Math.min(data?.sourceExitDistance ?? 58, horizontalDistance * 0.35);
+  const targetEntryX = targetX - direction * Math.min(data?.targetEntryDistance ?? 58, horizontalDistance * 0.35);
+  const routeY = Math.min(routedSourceY, routedTargetY) - (data?.routeLaneOffset ?? 0);
+  const points = data?.routeLaneOffset == null
     ? [
         { x: sourceX, y: routedSourceY },
-        { x: data?.channelX ?? (sourceX + targetX) / 2, y: routedSourceY },
-        { x: data?.channelX ?? (sourceX + targetX) / 2, y: routedTargetY },
+        { x: channelX, y: routedSourceY },
+        { x: channelX, y: routedTargetY },
         { x: targetX, y: routedTargetY },
       ]
     : [
         { x: sourceX, y: routedSourceY },
-        { x: data.sourceExitX ?? sourceX + 28, y: routedSourceY },
-        { x: data.sourceExitX ?? sourceX + 28, y: data.routeY },
-        { x: data.targetEntryX ?? targetX - 28, y: data.routeY },
-        { x: data.targetEntryX ?? targetX - 28, y: routedTargetY },
+        { x: sourceExitX, y: routedSourceY },
+        { x: sourceExitX, y: routeY },
+        { x: targetEntryX, y: routeY },
+        { x: targetEntryX, y: routedTargetY },
         { x: targetX, y: routedTargetY },
       ];
   const edgePath = roundedPath(points);
@@ -197,6 +207,7 @@ function buildPrerequisiteGraph(
   const edgeKeys = new Set<string>();
   const edges: Edge[] = [];
   const logicByNodeId = new Map<string, LogicNodeData>();
+  const replacementPositionSourceByNodeId = new Map<string, string>();
   discovered.set(target.id, target);
   const maxNodes = 70;
 
@@ -254,16 +265,26 @@ function buildPrerequisiteGraph(
       }
 
       const allOptions = [...uniqueFamilies.values()];
+      if (allOptions.length <= 1) {
+        const family = allOptions[0];
+        if (family && family.id !== edgeTarget) {
+          discover(family);
+          addEdge(family.id, edgeTarget, !logicByNodeId.has(edgeTarget));
+        }
+        return;
+      }
+
+      const logicId = `logic:${edgeTarget}:${path}:${expression.type}`;
       const selectedOptions = allOptions.filter((family) => selectedFamilyIds.has(family.id));
       if (selectedOptions.length > 0) {
         selectedOptions.forEach((family) => {
           discover(family);
+          replacementPositionSourceByNodeId.set(family.id, logicId);
           addEdge(family.id, edgeTarget, !logicByNodeId.has(edgeTarget));
         });
         return;
       }
 
-      const logicId = `logic:${edgeTarget}:${path}:${expression.type}`;
       logicByNodeId.set(logicId, {
         kind: expression.type,
         optionFamilies: allOptions,
@@ -293,6 +314,7 @@ function buildPrerequisiteGraph(
     edges,
     familyByNodeId: new Map([...discovered].map(([id, family]) => [id, family])),
     logicByNodeId,
+    replacementPositionSourceByNodeId,
   };
 }
 
@@ -302,6 +324,7 @@ export function buildPrerequisiteForest(
 ): GraphData {
   const familyByNodeId = new Map<string, CourseFamily>();
   const logicByNodeId = new Map<string, LogicNodeData>();
+  const replacementPositionSourceByNodeId = new Map<string, string>();
   const edgeById = new Map<string, Edge>();
   const targetIds = new Set(targets.map((target) => target.id));
 
@@ -312,6 +335,9 @@ export function buildPrerequisiteForest(
     const tree = buildPrerequisiteGraph(target, families, targetIds);
     for (const [id, family] of tree.familyByNodeId) familyByNodeId.set(id, family);
     for (const [id, logic] of tree.logicByNodeId) logicByNodeId.set(id, logic);
+    for (const [id, sourceId] of tree.replacementPositionSourceByNodeId) {
+      replacementPositionSourceByNodeId.set(id, sourceId);
+    }
     for (const edge of tree.edges) edgeById.set(`${edge.source}->${edge.target}`, edge);
   }
 
@@ -356,7 +382,6 @@ export function buildPrerequisiteForest(
   const horizontalGap = 480;
   const verticalNodeGap = 58;
   const componentGap = 150;
-  const logicNodeWidth = (id: string) => logicByNodeId.get(id)?.kind === "any" ? 260 : 44;
   let nextComponentY = 0;
 
   for (const component of components) {
@@ -540,12 +565,9 @@ export function buildPrerequisiteForest(
       return groups.values();
     })()) {
       edgesInGap.forEach((edge, index) => {
-        const sourceX = nodePosition.get(edge.source)?.x ?? 0;
-        const targetX = nodePosition.get(edge.target)?.x ?? sourceX + horizontalGap;
-        const sourceWidth = logicByNodeId.has(edge.source) ? logicNodeWidth(edge.source) : 210;
-        const sourceRight = sourceX + sourceWidth;
-        const gapWidth = Math.max(8, targetX - sourceRight);
-        updateEdgeData(edge, { channelX: sourceRight + ((index + 1) * gapWidth) / (edgesInGap.length + 1) });
+        updateEdgeData(edge, {
+          channelRatio: (index + 1) / (edgesInGap.length + 1),
+        });
       });
     }
 
@@ -553,28 +575,27 @@ export function buildPrerequisiteForest(
     for (const edgesAfterLayer of groupEdges((edge) => String(nodePosition.get(edge.source)?.x ?? 0))) {
       const longInGroup = edgesAfterLayer.filter((edge) => longIndex.has(edge.id));
       longInGroup.forEach((edge, index) => {
-        const sourceX = nodePosition.get(edge.source)?.x ?? 0;
-        const sourceWidth = logicByNodeId.has(edge.source) ? logicNodeWidth(edge.source) : 210;
-        const available = Math.max(12, Math.min(56, horizontalGap - sourceWidth - 16));
-        updateEdgeData(edge, { sourceExitX: sourceX + sourceWidth + 8 + ((index + 1) * available) / (longInGroup.length + 1) });
+        updateEdgeData(edge, {
+          sourceExitDistance: 48 + ((index + 1) * 34) / (longInGroup.length + 1),
+        });
       });
     }
     for (const edgesBeforeLayer of groupEdges((edge) => String(nodePosition.get(edge.target)?.x ?? 0))) {
       const longInGroup = edgesBeforeLayer.filter((edge) => longIndex.has(edge.id));
       longInGroup.forEach((edge, index) => {
-        const targetX = nodePosition.get(edge.target)?.x ?? 0;
-        const available = Math.max(12, Math.min(56, horizontalGap - 226));
-        updateEdgeData(edge, { targetEntryX: targetX - available - 8 + ((index + 1) * available) / (longInGroup.length + 1) });
+        updateEdgeData(edge, {
+          targetEntryDistance: 48 + ((index + 1) * 34) / (longInGroup.length + 1),
+        });
       });
     }
     longEdges.forEach((edge, index) => updateEdgeData(edge, {
-      routeY: componentTop - 42 - index * 22,
+      routeLaneOffset: 54 + index * 24,
     }));
 
     nextComponentY = componentTop + componentHeight;
   }
 
-  return { nodes, edges, familyByNodeId, logicByNodeId };
+  return { nodes, edges, familyByNodeId, logicByNodeId, replacementPositionSourceByNodeId };
 }
 
 export default function CourseMapPage() {
@@ -656,10 +677,16 @@ export default function CourseMapPage() {
     setFlowNodes((current) => {
       if (!graph) return [];
       const currentPositions = new Map(current.map((node) => [node.id, node.position]));
-      return graph.nodes.map((node) => ({
-        ...node,
-        position: currentPositions.get(node.id) ?? node.position,
-      }));
+      return graph.nodes.map((node) => {
+        const replacementSourceId = graph.replacementPositionSourceByNodeId.get(node.id);
+        return {
+          ...node,
+          position:
+            currentPositions.get(node.id) ??
+            (replacementSourceId ? currentPositions.get(replacementSourceId) : undefined) ??
+            node.position,
+        };
+      });
     });
   }, [graph, setFlowNodes]);
 
@@ -750,8 +777,21 @@ export default function CourseMapPage() {
     if (!visible && selectedFamilyId === family.id) setSelectedFamilyId(null);
   }
 
-  function addSelectedToSchedule() {
+  function toggleSelectedSchedule() {
     if (!selected) return;
+    const scheduledMatches = state.plannedCourses.filter(
+      (planned) =>
+        selected.members.some((member) => member.subject_id === localId(planned.courseId)) &&
+        planned.term === scheduleTerm,
+    );
+    if (scheduledMatches.length) {
+      scheduledMatches.forEach((planned) => dispatch({
+        type: "REMOVE_PLANNED_COURSE",
+        courseId: planned.courseId,
+        term: planned.term,
+      }));
+      return;
+    }
     const course = selected.primary;
     dispatch({
       type: "ADD_PLANNED_COURSE",
@@ -846,7 +886,14 @@ export default function CourseMapPage() {
     void findLogicalNextCourses();
   }, [selectedFamilyId, state.interestQuery, state.careerGoal, state.selectedRequirementId]);
 
-  function addRecommendationToSchedule(course: RemoteCourse) {
+  function toggleRecommendationSchedule(course: RemoteCourse) {
+    const planned = state.plannedCourses.find(
+      (item) => localId(item.courseId) === course.subject_id && item.term === scheduleTerm,
+    );
+    if (planned) {
+      dispatch({ type: "REMOVE_PLANNED_COURSE", courseId: planned.courseId, term: planned.term });
+      return;
+    }
     dispatch({
       type: "ADD_PLANNED_COURSE",
       course: {
@@ -1055,11 +1102,10 @@ export default function CourseMapPage() {
                 ))}
               </select>
               <button
-                className="primary-button"
-                onClick={addSelectedToSchedule}
-                disabled={isSelectedScheduled()}
+                className={`primary-button${isSelectedScheduled() ? " remove-button" : ""}`}
+                onClick={toggleSelectedSchedule}
               >
-                {isSelectedScheduled() ? "Added ✓" : "+ Add"}
+                {isSelectedScheduled() ? "Remove" : "+ Add"}
               </button>
             </div>
           </div>
@@ -1117,11 +1163,10 @@ export default function CourseMapPage() {
                         </ul>
                       )}
                       <button
-                        className="text-button"
-                        disabled={alreadyPlanned}
-                        onClick={() => addRecommendationToSchedule(recommendation.course)}
+                        className={`text-button${alreadyPlanned ? " remove-button" : ""}`}
+                        onClick={() => toggleRecommendationSchedule(recommendation.course)}
                       >
-                        {alreadyPlanned ? "Added to selected term ✓" : "+ Add to selected term"}
+                        {alreadyPlanned ? "Remove from selected term" : "+ Add to selected term"}
                       </button>
                       {courseWebsiteFor(recommendation.course.subject_id) && (
                         <a

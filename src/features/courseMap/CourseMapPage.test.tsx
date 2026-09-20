@@ -54,8 +54,8 @@ describe("course map forest layout", () => {
     const adjacentEdge = graph.edges.find((edge) => edge.source === "1.002" && edge.target === "1.003");
 
     expect(graph.edges.every((edge) => edge.type === "routed")).toBe(true);
-    expect(directEdge?.data?.routeY).toEqual(expect.any(Number));
-    expect(adjacentEdge?.data?.routeY).toBeUndefined();
+    expect(directEdge?.data?.routeLaneOffset).toEqual(expect.any(Number));
+    expect(adjacentEdge?.data?.routeLaneOffset).toBeUndefined();
   });
 
   it("groups OR prerequisites inside one choice container", () => {
@@ -77,6 +77,19 @@ describe("course map forest layout", () => {
     expect(graph.edges.find((edge) => edge.source === choiceId)?.markerEnd).toBeDefined();
   });
 
+  it("uses a direct prerequisite node when only one catalog course is visible in an OR", () => {
+    const catalog = [
+      course("1.001", "Visible option"),
+      course("1.003", "Destination", "1.001/''permission of instructor''"),
+    ];
+    const { families } = buildCourseFamilies(catalog);
+    const target = families.find((family) => family.id === "1.003")!;
+    const graph = buildPrerequisiteForest([target], families);
+
+    expect(graph.logicByNodeId.size).toBe(0);
+    expect(graph.edges.map((edge) => `${edge.source}->${edge.target}`)).toContain("1.001->1.003");
+  });
+
   it("replaces a satisfied OR container with the selected prerequisite subtree", () => {
     const catalog = [
       course("1.000", "Foundation"),
@@ -92,6 +105,7 @@ describe("course map forest layout", () => {
     expect(graph.familyByNodeId.has("1.000")).toBe(true);
     expect(graph.familyByNodeId.has("1.001")).toBe(true);
     expect(graph.familyByNodeId.has("1.002")).toBe(false);
+    expect(graph.replacementPositionSourceByNodeId.get("1.001")).toContain("logic:1.003");
     expect(graph.edges.map((edge) => `${edge.source}->${edge.target}`)).toEqual(expect.arrayContaining([
       "1.000->1.001",
       "1.001->1.003",

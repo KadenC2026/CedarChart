@@ -34,13 +34,13 @@ a { color: inherit; }
 .topbar {
   height: 72px; display: flex; align-items: center; justify-content: space-between;
   padding: 0 max(24px, calc((100vw - 1180px)/2)); border-bottom: 1px solid var(--border);
-  background: rgba(247,244,237,.92); position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px);
+  background: rgba(247,244,237,.92); position: sticky; top: 0; z-index: 1000; backdrop-filter: blur(10px);
 }
 .brand { font-weight: 850; font-size: 22px; text-decoration: none; letter-spacing: -.03em; }
 .topbar nav { display: flex; gap: 10px; }
 .topbar nav a { text-decoration: none; padding: 9px 14px; border-radius: 999px; color: var(--muted); }
 .topbar nav a.active { background: var(--green-soft); color: var(--green); }
-.account-menu { position: relative; }
+.account-menu { position: relative; z-index: 1001; }
 .account-trigger {
   display: inline-flex;
   align-items: center;
@@ -71,7 +71,7 @@ a { color: inherit; }
   position: absolute;
   top: calc(100% + 10px);
   right: 0;
-  z-index: 20;
+  z-index: 1002;
   width: min(350px, calc(100vw - 24px));
   display: grid;
   gap: 10px;
@@ -1681,6 +1681,12 @@ button:disabled { cursor: default; opacity: .65; }
   padding: 9px 12px;
   font-size: 12px;
 }
+.course-map-schedule .primary-button.remove-button {
+  border: 1px solid #b86a5d;
+  background: #fff;
+  color: #9b3f33;
+}
+.course-map-schedule .primary-button.remove-button:hover { background: #fff3f0; }
 .course-next-panel {
   border-top: 1px solid #eee;
   padding-top: 14px;
@@ -1788,6 +1794,7 @@ button:disabled { cursor: default; opacity: .65; }
   font-size: 11px;
   padding-top: 7px;
 }
+.course-next-card .text-button.remove-button { color: #9b3f33; }
 .course-next-website {
   display: inline-block;
   margin: 7px 0 0 10px;
