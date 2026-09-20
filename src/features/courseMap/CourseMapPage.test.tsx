@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { RemoteCourse } from "../../domain/types";
 import { buildCourseFamilies } from "../../domain/courseFamilies";
-import { buildPrerequisiteForest } from "./CourseMapPage";
+import { buildPrerequisiteForest, reconcileGraphNodes } from "./CourseMapPage";
 
 function course(subject_id: string, title: string, prerequisites = ""): RemoteCourse {
   return { subject_id, title, prerequisites, description: "", total_units: 12 };
@@ -119,6 +119,32 @@ describe("course map forest layout", () => {
       "1.000->1.001",
       "1.001->1.003",
     ]));
+  });
+
+  it("reflows existing nodes when an OR replacement reveals a deeper subtree", () => {
+    const catalog = [
+      course("1.000", "Foundation"),
+      course("1.001", "Option A", "1.000"),
+      course("1.002", "Option B"),
+      course("1.004", "Direct requirement"),
+      course("1.003", "Destination", "1.004, (1.001/1.002)"),
+    ];
+    const { families } = buildCourseFamilies(catalog);
+    const destination = families.find((family) => family.id === "1.003")!;
+    const unresolved = buildPrerequisiteForest([destination], families);
+    const selected = families.filter((family) => ["1.001", "1.003"].includes(family.id));
+    const resolved = buildPrerequisiteForest(selected, families);
+    const choiceId = [...unresolved.logicByNodeId.keys()][0];
+    const choicePosition = unresolved.nodes.find((node) => node.id === choiceId)!.position;
+    const foundationPosition = resolved.nodes.find((node) => node.id === "1.000")!.position;
+    const staleNodes = unresolved.nodes.map((node) =>
+      node.id === "1.004" ? { ...node, position: foundationPosition } : node,
+    );
+    const reconciled = reconcileGraphNodes(resolved, staleNodes, new Map());
+    const byId = new Map(reconciled.map((node) => [node.id, node.position]));
+
+    expect(byId.get("1.001")).toEqual(choicePosition);
+    expect(byId.get("1.004")).not.toEqual(byId.get("1.000"));
   });
 
   it("reveals prerequisites only for selected courses", () => {

@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   BaseEdge,
@@ -603,6 +603,24 @@ export function buildPrerequisiteForest(
   return { nodes, edges, familyByNodeId, logicByNodeId, replacementPositionSourceByNodeId };
 }
 
+export function reconcileGraphNodes(
+  graph: GraphData,
+  current: Node[],
+  draggedPositions: ReadonlyMap<string, { x: number; y: number }>,
+) {
+  const currentPositions = new Map(current.map((node) => [node.id, node.position]));
+  return graph.nodes.map((node) => {
+    const replacementSourceId = graph.replacementPositionSourceByNodeId.get(node.id);
+    return {
+      ...node,
+      position:
+        draggedPositions.get(node.id) ??
+        (replacementSourceId ? currentPositions.get(replacementSourceId) : undefined) ??
+        node.position,
+    };
+  });
+}
+
 export default function CourseMapPage() {
   const { data, error, retry } = useCatalog();
   const { state, dispatch } = useApp();
@@ -687,21 +705,12 @@ export default function CourseMapPage() {
     [graphTargets, families, plannedTermByFamilyId],
   );
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState<Node>([]);
+  const draggedPositionsRef = useRef(new Map<string, { x: number; y: number }>());
 
   useEffect(() => {
     setFlowNodes((current) => {
       if (!graph) return [];
-      const currentPositions = new Map(current.map((node) => [node.id, node.position]));
-      return graph.nodes.map((node) => {
-        const replacementSourceId = graph.replacementPositionSourceByNodeId.get(node.id);
-        return {
-          ...node,
-          position:
-            currentPositions.get(node.id) ??
-            (replacementSourceId ? currentPositions.get(replacementSourceId) : undefined) ??
-            node.position,
-        };
-      });
+      return reconcileGraphNodes(graph, current, draggedPositionsRef.current);
     });
   }, [graph, setFlowNodes]);
 
@@ -1031,6 +1040,7 @@ export default function CourseMapPage() {
           nodesDraggable
           nodesConnectable={false}
           onNodesChange={onNodesChange}
+          onNodeDragStop={(_, node) => draggedPositionsRef.current.set(node.id, node.position)}
           panOnDrag
           panOnScroll
           panOnScrollSpeed={1}
