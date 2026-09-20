@@ -322,6 +322,7 @@ export function buildPrerequisiteForest(
   targets: CourseFamily[],
   families: CourseFamily[],
   plannedTermByFamilyId = new Map<string, number>(),
+  creditLabelByFamilyId = new Map<string, string>(),
 ): GraphData {
   const familyByNodeId = new Map<string, CourseFamily>();
   const logicByNodeId = new Map<string, LogicNodeData>();
@@ -461,6 +462,7 @@ export function buildPrerequisiteForest(
         const family = familyByNodeId.get(id);
         const logic = logicByNodeId.get(id);
         const plannedTerm = family ? plannedTermByFamilyId.get(family.id) : undefined;
+        const creditLabel = family ? creditLabelByFamilyId.get(family.id) : undefined;
         // Course cards keep their dependency rank but are gently staggered so the
         // graph reads as a connected map rather than a rigid spreadsheet grid.
         const horizontalStagger = family ? ((index % 3) - 1) * 30 : 0;
@@ -475,6 +477,7 @@ export function buildPrerequisiteForest(
           className: family
             ? "course-map-node" +
               (plannedTerm == null ? "" : ` course-map-scheduled ${termColorClass(plannedTerm)}`) +
+              (plannedTerm == null && creditLabel ? " course-map-credited" : "") +
               (targetIds.has(id) ? " course-map-target" : "")
             : `course-map-logic-node course-map-logic-${logic?.kind ?? "all"}`,
           data: {
@@ -483,6 +486,7 @@ export function buildPrerequisiteForest(
                 <strong>{family.label}</strong>
                 <span>{family.title}</span>
                 {plannedTerm != null && <small className="course-map-planned-term">Scheduled · {termLabel(plannedTerm)}</small>}
+                {plannedTerm == null && creditLabel && <small className="course-map-credit-status">{creditLabel}</small>}
                 {family.members.length > 1 && <small>{family.members.length} variants merged</small>}
               </div>
             ) : logic?.kind === "any" ? (
@@ -661,7 +665,14 @@ export default function CourseMapPage() {
     () => [...new Set(state.plannedCourses.map((course) => localId(course.courseId)))],
     [state.plannedCourses],
   );
-  const scheduledCourseIdSet = useMemo(() => new Set(scheduledCourseIds), [scheduledCourseIds]);
+  const creditedCourseIds = useMemo(
+    () => [...new Set(state.priorCredits.map((credit) => localId(credit.courseId)))],
+    [state.priorCredits],
+  );
+  const mappedCourseIdSet = useMemo(
+    () => new Set([...scheduledCourseIds, ...creditedCourseIds]),
+    [scheduledCourseIds, creditedCourseIds],
+  );
   const plannedTermByFamilyId = useMemo(() => {
     const termsByFamily = new Map<string, number>();
     for (const plannedCourse of state.plannedCourses) {
@@ -685,24 +696,46 @@ export default function CourseMapPage() {
     }
     return [...byId.values()];
   }, [scheduledCourseIds, hiddenMapCourseIdSet, familyByCourseId]);
+  const creditLabelByFamilyId = useMemo(() => {
+    const labels = new Map<string, string>();
+    for (const credit of state.priorCredits) {
+      const family = familyByCourseId.get(localId(credit.courseId));
+      if (!family) continue;
+      const label = credit.source === "ase" ? "Passed ASE · prerequisite satisfied" : "Prior credit · prerequisite satisfied";
+      if (credit.source === "ase" || !labels.has(family.id)) labels.set(family.id, label);
+    }
+    return labels;
+  }, [state.priorCredits, familyByCourseId]);
+  const creditedMapFamilies = useMemo(() => {
+    const byId = new Map<string, CourseFamily>();
+    for (const courseId of creditedCourseIds) {
+      if (hiddenMapCourseIdSet.has(courseId)) continue;
+      const family = familyByCourseId.get(courseId);
+      if (family) byId.set(family.id, family);
+    }
+    return [...byId.values()];
+  }, [creditedCourseIds, hiddenMapCourseIdSet, familyByCourseId]);
   const graphTargets = useMemo(() => {
     const roots = [...plannedMapFamilies];
+    for (const family of creditedMapFamilies) {
+      if (!roots.some((root) => root.id === family.id)) roots.push(family);
+    }
     if (target && !roots.some((family) => family.id === target.id)) roots.push(target);
     return roots;
-  }, [plannedMapFamilies, target]);
-  const hiddenScheduledCourses = useMemo(
-    () => scheduledCourseIds
+  }, [plannedMapFamilies, creditedMapFamilies, target]);
+  const hiddenMappedCourses = useMemo(
+    () => [...mappedCourseIdSet]
       .filter((courseId) => hiddenMapCourseIdSet.has(courseId))
       .map((courseId) => catalog.find((course) => course.subject_id === courseId))
       .filter((course): course is RemoteCourse => Boolean(course)),
-    [scheduledCourseIds, hiddenMapCourseIdSet, catalog],
+    [mappedCourseIdSet, hiddenMapCourseIdSet, catalog],
   );
 
   const graph = useMemo(
     () => (graphTargets.length
-      ? buildPrerequisiteForest(graphTargets, families, plannedTermByFamilyId)
+      ? buildPrerequisiteForest(graphTargets, families, plannedTermByFamilyId, creditLabelByFamilyId)
       : null),
-    [graphTargets, families, plannedTermByFamilyId],
+    [graphTargets, families, plannedTermByFamilyId, creditLabelByFamilyId],
   );
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState<Node>([]);
   const draggedPositionsRef = useRef(new Map<string, { x: number; y: number }>());
@@ -719,6 +752,7 @@ export default function CourseMapPage() {
       ? families.find((family) => family.id === selectedFamilyId)
       : undefined;
   const plannedTerms = selected ? plannedTermsFor(selected) : [];
+  const selectedCreditLabel = selected ? creditLabelByFamilyId.get(selected.id) : undefined;
   const selectedCourseWebsite = selected ? courseWebsiteFor(selected.primary.subject_id) : undefined;
 
   function chooseFamily(family: CourseFamily) {
@@ -796,7 +830,7 @@ export default function CourseMapPage() {
   function setFamilyMapVisibility(family: CourseFamily, visible: boolean) {
     const courseIds = family.members
       .map((member) => member.subject_id)
-      .filter((courseId) => scheduledCourseIdSet.has(courseId));
+      .filter((courseId) => mappedCourseIdSet.has(courseId));
     dispatch({ type: "SET_MAP_COURSE_VISIBILITY", courseIds, visible });
     if (!visible && selectedFamilyId === family.id) setSelectedFamilyId(null);
   }
@@ -973,11 +1007,11 @@ export default function CourseMapPage() {
           </p>
           {mapSearchNote && <p className="method-note">{mapSearchNote}</p>}
 
-          {hiddenScheduledCourses.length > 0 && (
+          {hiddenMappedCourses.length > 0 && (
             <div className="course-map-hidden-courses">
-              <span>Hidden scheduled courses</span>
+              <span>Hidden satisfied courses</span>
               <div>
-                {hiddenScheduledCourses.map((course) => (
+                {hiddenMappedCourses.map((course) => (
                   <button
                     key={course.subject_id}
                     onClick={() => dispatch({ type: "SET_MAP_COURSE_VISIBILITY", courseIds: [course.subject_id], visible: true })}
@@ -1063,9 +1097,9 @@ export default function CourseMapPage() {
         </ReactFlow>
       </div>
 
-      {(plannedMapFamilies.length > 0 || hiddenScheduledCourses.length > 0) && (
+      {(plannedMapFamilies.length > 0 || creditedMapFamilies.length > 0 || hiddenMappedCourses.length > 0) && (
         <div className="course-map-pinned-tray">
-          <strong>Scheduled on map</strong>
+          <strong>Satisfied on map</strong>
           <div>
             {plannedMapFamilies.map((family) => (
               <span className="course-map-pinned-course" key={family.id}>
@@ -1073,7 +1107,15 @@ export default function CourseMapPage() {
                 <button onClick={() => setFamilyMapVisibility(family, false)} aria-label={`Hide ${family.label} from map`}>×</button>
               </span>
             ))}
-            {hiddenScheduledCourses.map((course) => (
+            {creditedMapFamilies
+              .filter((family) => !plannedMapFamilies.some((planned) => planned.id === family.id))
+              .map((family) => (
+                <span className="course-map-pinned-course course-map-pinned-credit" key={family.id}>
+                  <button onClick={() => setSelectedFamilyId(family.id)}>{family.label} · credit</button>
+                  <button onClick={() => setFamilyMapVisibility(family, false)} aria-label={`Hide ${family.label} from map`}>×</button>
+                </span>
+              ))}
+            {hiddenMappedCourses.map((course) => (
               <button
                 className="course-map-restore-course"
                 key={course.subject_id}
@@ -1238,11 +1280,12 @@ export default function CourseMapPage() {
             </Link>
           </div>
 
-          {plannedTerms.length > 0 && (
+          {(plannedTerms.length > 0 || selectedCreditLabel) && (
             <>
-              <p className="data-note">Already in your plan: {plannedTerms.join(", ")}</p>
+              {plannedTerms.length > 0 && <p className="data-note">Already in your plan: {plannedTerms.join(", ")}</p>}
+              {selectedCreditLabel && <p className="data-note">{selectedCreditLabel}</p>}
               <button className="secondary-button" onClick={() => setFamilyMapVisibility(selected, false)}>
-                Hide scheduled course from map
+                Hide satisfied course from map
               </button>
             </>
           )}
@@ -1267,6 +1310,7 @@ export default function CourseMapPage() {
         <strong>{graphTargets.length} selected course{graphTargets.length === 1 ? "" : "s"}</strong>
         <span>{graph.familyByNodeId.size} course families in prerequisite map</span>
         {plannedTermByFamilyId.size > 0 && <span>Scheduled course colors match your plan term</span>}
+        {creditLabelByFamilyId.size > 0 && <span>Prior-credit courses count as satisfied prerequisites</span>}
       </div>
     </section>
   );

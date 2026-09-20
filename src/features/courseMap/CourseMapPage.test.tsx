@@ -50,6 +50,31 @@ describe("course map forest layout", () => {
     expect(graph.nodes[0].className).toContain("term-color-6");
   });
 
+  it("treats prior-credit courses as satisfied, colored prerequisite roots", () => {
+    const catalog = [
+      course("1.000", "Foundation"),
+      course("1.001", "Credited option", "1.000"),
+      course("1.002", "Other option"),
+      course("1.003", "Destination", "1.001/1.002"),
+    ];
+    const { families } = buildCourseFamilies(catalog);
+    const targets = families.filter((family) => ["1.001", "1.003"].includes(family.id));
+    const graph = buildPrerequisiteForest(
+      targets,
+      families,
+      new Map(),
+      new Map([["1.001", "Prior credit · prerequisite satisfied"]]),
+    );
+    const creditedNode = graph.nodes.find((node) => node.id === "1.001");
+
+    expect(graph.logicByNodeId.size).toBe(0);
+    expect(creditedNode?.className).toContain("course-map-credited");
+    expect(graph.edges.map((edge) => `${edge.source}->${edge.target}`)).toEqual(expect.arrayContaining([
+      "1.000->1.001",
+      "1.001->1.003",
+    ]));
+  });
+
   it("routes arrows that skip a column through an outer lane", () => {
     const catalog = [
       course("1.001", "Foundations"),
