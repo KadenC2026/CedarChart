@@ -32,6 +32,7 @@ type Action =
   | { type: "REMOVE_PRIOR_CREDIT"; courseId: string }
   | { type: "TOGGLE_INSTRUCTOR_PERMISSION"; courseId: string }
   | { type: "TOGGLE_INSTRUCTOR_PERMISSION_CHOICE"; choiceId: string }
+  | { type: "TOGGLE_INSTRUCTOR_PERMISSION_PREREQUISITE"; prerequisiteId: string }
   | { type: "ADD_PRIORITY_COURSE"; course: PriorityCourse }
   | { type: "REMOVE_PRIORITY_COURSE"; courseId: string }
   | { type: "MOVE_PRIORITY_COURSE"; courseId: string; direction: -1 | 1 }
@@ -45,6 +46,7 @@ const initialState: AppState = {
   priorCredits: [],
   instructorPermissionCourseIds: [],
   instructorPermissionChoiceIds: [],
+  instructorPermissionPrerequisiteIds: [],
   selectedCourseId: null,
   highlightedCourseIds: [],
   targetCourseId: null,
@@ -168,6 +170,15 @@ export function reducer(state: AppState, action: Action): AppState {
         instructorPermissionChoiceIds: recorded
           ? state.instructorPermissionChoiceIds.filter((id) => id !== action.choiceId)
           : [...state.instructorPermissionChoiceIds, action.choiceId],
+      };
+    }
+    case "TOGGLE_INSTRUCTOR_PERMISSION_PREREQUISITE": {
+      const recorded = state.instructorPermissionPrerequisiteIds.includes(action.prerequisiteId);
+      return {
+        ...state,
+        instructorPermissionPrerequisiteIds: recorded
+          ? state.instructorPermissionPrerequisiteIds.filter((id) => id !== action.prerequisiteId)
+          : [...state.instructorPermissionPrerequisiteIds, action.prerequisiteId],
       };
     }
     case "ADD_PRIORITY_COURSE": {

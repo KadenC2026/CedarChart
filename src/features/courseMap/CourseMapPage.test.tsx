@@ -34,8 +34,9 @@ describe("course map forest layout", () => {
     const graph = buildPrerequisiteForest(targets, families);
     const byId = new Map(graph.nodes.map((node) => [node.id, node]));
 
-    expect(byId.get("6.100A")!.position.y).toBe(byId.get("6.1010")!.position.y);
-    expect(byId.get("18.01")!.position.y).toBe(byId.get("18.02")!.position.y);
+    // Prerequisite cards can be taller when they expose an instructor-permission control.
+    expect(Math.abs(byId.get("6.100A")!.position.y - byId.get("6.1010")!.position.y)).toBeLessThan(20);
+    expect(Math.abs(byId.get("18.01")!.position.y - byId.get("18.02")!.position.y)).toBeLessThan(20);
     expect(byId.get("18.01")!.position.y).toBeGreaterThan(byId.get("6.100A")!.position.y);
     expect(byId.get("6.100A")!.position.x).toBeLessThan(byId.get("6.1010")!.position.x);
     expect(byId.get("18.01")!.position.x).toBeLessThan(byId.get("18.02")!.position.x);
@@ -64,7 +65,7 @@ describe("course map forest layout", () => {
     );
     const positions = new Map(graph.nodes.map((node) => [node.id, node.position]));
 
-    expect(Math.abs(positions.get("1.001")!.y - positions.get("1.003")!.y)).toBeLessThan(40);
+    expect(Math.abs(positions.get("1.001")!.y - positions.get("1.003")!.y)).toBeLessThan(70);
   });
 
   it("treats prior-credit courses as satisfied, colored prerequisite roots", () => {
@@ -209,6 +210,28 @@ describe("course map forest layout", () => {
     expect(graph.nodes.map((node) => node.id)).toEqual(expect.arrayContaining(["1.001", "1.004"]));
     expect(graph.nodes.map((node) => node.id)).not.toEqual(expect.arrayContaining(["1.002", "1.003"]));
     expect(graph.edges.map((edge) => `${edge.source}->${edge.target}`)).toContain("1.001->1.004");
+  });
+
+  it("waives one direct prerequisite edge while retaining the other direct edges", () => {
+    const catalog = [
+      course("18.05", "Probability"),
+      course("6.3900", "Machine Learning"),
+      course("6.7960", "Deep Learning", "18.05, 6.3900"),
+    ];
+    const { families } = buildCourseFamilies(catalog);
+    const target = families.find((family) => family.id === "6.7960")!;
+    const graph = buildPrerequisiteForest(
+      [target],
+      families,
+      new Map(),
+      new Map(),
+      new Set(),
+      new Set(),
+      new Set(["6.7960:18.05"]),
+    );
+
+    expect(graph.nodes.map((node) => node.id)).not.toContain("18.05");
+    expect(graph.edges.map((edge) => `${edge.source}->${edge.target}`)).toEqual(["6.3900->6.7960"]);
   });
 
 

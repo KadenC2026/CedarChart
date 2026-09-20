@@ -86,6 +86,8 @@ export type AppState = {
   instructorPermissionCourseIds: string[];
   /** Specific One Of prerequisite groups waived with instructor approval. */
   instructorPermissionChoiceIds: string[];
+  /** Individual prerequisite-course edges waived with instructor approval. */
+  instructorPermissionPrerequisiteIds: string[];
   selectedCourseId: string | null;
   highlightedCourseIds: string[];
   targetCourseId: string | null;

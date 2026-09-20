@@ -45,6 +45,7 @@ type GraphData = {
   familyByNodeId: Map<string, CourseFamily>;
   logicByNodeId: Map<string, LogicNodeData>;
   replacementPositionSourceByNodeId: Map<string, string>;
+  directPrerequisitePermissionByNodeId: Map<string, Array<{ prerequisiteId: string; targetLabel: string }>>;
 };
 
 type LogicNodeData = {
@@ -304,12 +305,14 @@ function buildPrerequisiteGraph(
   selectedFamilyIds: Set<string>,
   instructorPermissionCourseIds: Set<string>,
   instructorPermissionChoiceIds: Set<string>,
+  instructorPermissionPrerequisiteIds: Set<string>,
 ): GraphData {
   const discovered = new Map<string, CourseFamily>();
   const edgeKeys = new Set<string>();
   const edges: Edge[] = [];
   const logicByNodeId = new Map<string, LogicNodeData>();
   const replacementPositionSourceByNodeId = new Map<string, string>();
+  const directPrerequisitePermissionByNodeId = new Map<string, Array<{ prerequisiteId: string; targetLabel: string }>>();
   discovered.set(target.id, target);
   const maxNodes = 70;
 
@@ -340,7 +343,15 @@ function buildPrerequisiteGraph(
     if (expression.type === "token") {
       const family = familyForPrerequisiteToken(expression.value, families);
       if (!family || family.id === edgeTarget) return;
+      const directPrerequisiteId = `${target.primary.subject_id}:${family.id}`;
+      if (!logicByNodeId.has(edgeTarget) && instructorPermissionPrerequisiteIds.has(directPrerequisiteId)) return;
       discover(family);
+      if (!logicByNodeId.has(edgeTarget)) {
+        directPrerequisitePermissionByNodeId.set(family.id, [
+          ...(directPrerequisitePermissionByNodeId.get(family.id) ?? []),
+          { prerequisiteId: directPrerequisiteId, targetLabel: target.label },
+        ]);
+      }
       addEdge(family.id, edgeTarget, !logicByNodeId.has(edgeTarget));
       return;
     }
@@ -428,6 +439,7 @@ function buildPrerequisiteGraph(
     familyByNodeId: new Map([...discovered].map(([id, family]) => [id, family])),
     logicByNodeId,
     replacementPositionSourceByNodeId,
+    directPrerequisitePermissionByNodeId,
   };
 }
 
@@ -438,10 +450,12 @@ export function buildPrerequisiteForest(
   creditLabelByFamilyId = new Map<string, string>(),
   instructorPermissionCourseIds = new Set<string>(),
   instructorPermissionChoiceIds = new Set<string>(),
+  instructorPermissionPrerequisiteIds = new Set<string>(),
 ): GraphData {
   const familyByNodeId = new Map<string, CourseFamily>();
   const logicByNodeId = new Map<string, LogicNodeData>();
   const replacementPositionSourceByNodeId = new Map<string, string>();
+  const directPrerequisitePermissionByNodeId = new Map<string, Array<{ prerequisiteId: string; targetLabel: string }>>();
   const edgeById = new Map<string, Edge>();
   const targetIds = new Set(targets.map((target) => target.id));
 
@@ -455,11 +469,18 @@ export function buildPrerequisiteForest(
       targetIds,
       instructorPermissionCourseIds,
       instructorPermissionChoiceIds,
+      instructorPermissionPrerequisiteIds,
     );
     for (const [id, family] of tree.familyByNodeId) familyByNodeId.set(id, family);
     for (const [id, logic] of tree.logicByNodeId) logicByNodeId.set(id, logic);
     for (const [id, sourceId] of tree.replacementPositionSourceByNodeId) {
       replacementPositionSourceByNodeId.set(id, sourceId);
+    }
+    for (const [id, permissions] of tree.directPrerequisitePermissionByNodeId) {
+      directPrerequisitePermissionByNodeId.set(id, [
+        ...(directPrerequisitePermissionByNodeId.get(id) ?? []),
+        ...permissions,
+      ]);
     }
     for (const edge of tree.edges) edgeById.set(`${edge.source}->${edge.target}`, edge);
   }
@@ -558,7 +579,7 @@ export function buildPrerequisiteForest(
 
     const estimatedNodeHeight = (id: string) => {
       const logic = logicByNodeId.get(id);
-      if (!logic) return 82;
+      if (!logic) return 82 + (directPrerequisitePermissionByNodeId.get(id)?.length ?? 0) * 31;
       if (logic.kind === "all") return 92;
       return 56 + Math.ceil(Math.max(1, logic.optionFamilies.length + (logic.instructorPermissionChoiceId ? 1 : 0)) / 2) * 54;
     };
@@ -628,6 +649,17 @@ export function buildPrerequisiteForest(
                 {plannedTerm == null && creditLabel && <small className="course-map-credit-status">{creditLabel}</small>}
                 {instructorPermissionCourseIds.has(`mit:${family.primary.subject_id}`) && <small className="course-map-permission-status">Instructor permission · prerequisites waived</small>}
                 {family.members.length > 1 && <small>{family.members.length} variants merged</small>}
+                {(directPrerequisitePermissionByNodeId.get(family.id) ?? []).map((permission) => (
+                  <button
+                    className="nodrag nopan course-map-direct-permission"
+                    data-direct-prerequisite-permission-id={permission.prerequisiteId}
+                    key={permission.prerequisiteId}
+                    title={`Record instructor permission to waive this prerequisite for ${permission.targetLabel}`}
+                    type="button"
+                  >
+                    Instructor permission for {permission.targetLabel}
+                  </button>
+                ))}
               </div>
             ) : logic?.kind === "any" ? (
               <div
@@ -811,7 +843,7 @@ export function buildPrerequisiteForest(
     nextComponentY = actualComponentBottom;
   }
 
-  return { nodes, edges, familyByNodeId, logicByNodeId, replacementPositionSourceByNodeId };
+  return { nodes, edges, familyByNodeId, logicByNodeId, replacementPositionSourceByNodeId, directPrerequisitePermissionByNodeId };
 }
 
 export function reconcileGraphNodes(
@@ -948,6 +980,7 @@ export default function CourseMapPage() {
         creditLabelByFamilyId,
         new Set(state.instructorPermissionCourseIds),
         new Set(state.instructorPermissionChoiceIds),
+        new Set(state.instructorPermissionPrerequisiteIds),
       )
       : null),
     [
@@ -957,6 +990,7 @@ export default function CourseMapPage() {
       creditLabelByFamilyId,
       state.instructorPermissionCourseIds,
       state.instructorPermissionChoiceIds,
+      state.instructorPermissionPrerequisiteIds,
     ],
   );
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState<Node>([]);
@@ -1340,6 +1374,12 @@ export default function CourseMapPage() {
           minZoom={0.08}
           maxZoom={2.2}
           onNodeClick={(event, node) => {
+            const directPermissionElement = (event.target as HTMLElement).closest<HTMLElement>("[data-direct-prerequisite-permission-id]");
+            const directPrerequisiteId = directPermissionElement?.dataset.directPrerequisitePermissionId;
+            if (directPrerequisiteId) {
+              dispatch({ type: "TOGGLE_INSTRUCTOR_PERMISSION_PREREQUISITE", prerequisiteId: directPrerequisiteId });
+              return;
+            }
             const permissionElement = (event.target as HTMLElement).closest<HTMLElement>("[data-instructor-permission-choice-id]");
             const permissionChoiceId = permissionElement?.dataset.instructorPermissionChoiceId;
             if (permissionChoiceId) {

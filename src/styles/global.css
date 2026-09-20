@@ -1159,6 +1159,22 @@ button:disabled { cursor: default; opacity: .65; }
   font-weight: 800;
   line-height: 1.25;
 }
+.course-map-direct-permission {
+  display: block;
+  width: 100%;
+  margin-top: 7px;
+  border: 1px solid #d8c171;
+  border-radius: 7px;
+  background: #fff9e6;
+  color: #6b4b08;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.2;
+  padding: 5px 6px;
+  text-align: left;
+}
+.course-map-direct-permission:hover { background: #fff1c7; }
 .course-map-node.course-map-scheduled .course-map-node-content strong { color: var(--term-ink); }
 .course-map-planned-term { color: var(--term-ink); font-weight: 800; }
 .course-map-node.course-map-credited {
