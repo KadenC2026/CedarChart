@@ -262,6 +262,76 @@ textarea:focus, input:focus, select:focus { border-color: var(--green); box-shad
   .social-context-bar span { white-space: normal; }
 }
 
+/* Personalized research, making, innovation, and career connections. */
+.network-page { max-width: 1080px; }
+.network-page > h1 { font-size: clamp(40px, 6vw, 62px); }
+.network-profile-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin: 32px 0 18px;
+  padding: 16px 18px;
+  border: 1px solid #bfd1c1;
+  border-radius: 16px;
+  background: var(--green-soft);
+}
+.network-profile-bar > div:first-child { min-width: 0; display: grid; gap: 3px; }
+.network-profile-bar span { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.network-profile-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+.network-year-select { display: grid; gap: 3px; min-width: 126px; }
+.network-year-select span { color: var(--green); font-size: 10px; font-weight: 850; letter-spacing: .05em; text-transform: uppercase; }
+.network-year-select select { padding: 8px 30px 8px 10px; background: white; font-size: 12px; }
+.network-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin: 34px 0 14px; }
+.network-section-heading h2 { margin: 6px 0 0; font-size: 28px; }
+.network-kicker { color: var(--green); font-size: 11px; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
+.network-method { border-radius: 999px; background: #eeeae1; color: var(--muted); padding: 7px 10px; font-size: 11px; font-weight: 850; }
+.network-method.ai { background: var(--green-soft); color: var(--green); }
+.network-match-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+.network-match-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: 0 12px 35px rgba(33, 45, 36, .05);
+  padding: 21px;
+}
+.network-card-topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.network-card-topline span { color: var(--green); font-size: 11px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+.network-card-topline small { color: var(--muted); font-size: 10px; }
+.network-match-card h3 { margin: 8px 0 7px; font-size: 21px; }
+.network-match-card > p { margin: 0 0 14px; color: var(--muted); line-height: 1.48; }
+.network-reason, .network-next-step { display: grid; gap: 3px; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 7px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.network-reason strong, .network-next-step strong { color: var(--ink); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+.network-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: auto; padding-top: 17px; }
+.network-card-actions a { color: var(--green); font-size: 13px; font-weight: 800; }
+.network-card-actions .primary-link { border-radius: 10px; background: var(--green); color: white; padding: 9px 13px; text-decoration: none; }
+.career-heading { margin-top: 44px; }
+.internship-heading { margin-top: 44px; }
+.network-handshake-link { color: var(--green); font-size: 13px; font-weight: 800; }
+.network-program-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px; }
+.network-program-grid > a { display: flex; flex-direction: column; gap: 7px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); padding: 17px; text-decoration: none; }
+.network-program-grid > a.year-match { border-color: #a9c4ad; box-shadow: inset 0 3px 0 var(--green); }
+.network-program-grid > a > div { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.network-program-grid span { color: var(--green); font-size: 11px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
+.network-program-grid em { border-radius: 999px; background: var(--green-soft); color: var(--green); padding: 4px 7px; font-size: 9px; font-style: normal; font-weight: 850; }
+.network-program-grid strong { font-size: 17px; }
+.network-program-grid small { flex: 1; color: var(--muted); line-height: 1.43; }
+.network-program-grid b { color: var(--green); font-size: 11px; }
+.network-career-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px; }
+.network-career-grid > a { display: grid; gap: 7px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); padding: 17px; text-decoration: none; }
+.network-career-grid span { font-weight: 850; }
+.network-career-grid small { color: var(--muted); line-height: 1.4; }
+.network-career-grid strong { color: var(--green); font-size: 12px; }
+.network-source-note { margin: 24px auto 0; max-width: 760px; color: var(--muted); font-size: 12px; line-height: 1.5; text-align: center; }
+
+@media (max-width: 820px) {
+  .network-match-grid, .network-career-grid, .network-program-grid { grid-template-columns: 1fr; }
+  .network-profile-bar, .network-section-heading { align-items: flex-start; flex-direction: column; }
+  .network-profile-bar span { white-space: normal; }
+}
+
 
 /* CourseRoad-style planning experience */
 .planner-heading { max-width: 860px; margin-bottom: 28px; }

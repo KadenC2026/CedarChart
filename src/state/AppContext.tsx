@@ -7,6 +7,7 @@ import type {
   PriorCredit,
   PriorityCourse,
   PriorityTier,
+  StudentYear,
 } from "../domain/types";
 import { useAuth } from "../auth/AuthContext";
 import { firebaseDb } from "../auth/firebase";
@@ -19,6 +20,7 @@ type Action =
   | { type: "SET_QUERY"; query: string }
   | { type: "SET_CAREER_GOAL"; careerGoal: string }
   | { type: "SET_BACKGROUND_EXPERIENCE"; backgroundExperience: string }
+  | { type: "SET_STUDENT_YEAR"; studentYear: StudentYear }
   | { type: "SET_RECOMMENDATIONS"; results: InterestSearchResult[] }
   | { type: "ADD_PLANNED_COURSE"; course: PlannedCourse }
   | { type: "REMOVE_PLANNED_COURSE"; courseId: string; term: number }
@@ -49,6 +51,7 @@ const initialState: AppState = {
   hiddenMapCourseIds: [],
   priorityCourses: [],
   selectedRequirementId: null,
+  studentYear: "unspecified",
 };
 
 export function reducer(state: AppState, action: Action): AppState {
@@ -74,6 +77,8 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, careerGoal: action.careerGoal };
     case "SET_BACKGROUND_EXPERIENCE":
       return { ...state, backgroundExperience: action.backgroundExperience };
+    case "SET_STUDENT_YEAR":
+      return { ...state, studentYear: action.studentYear };
     case "SET_RECOMMENDATIONS":
       return { ...state, recommendations: action.results, highlightedCourseIds: action.results.map((r) => r.courseId) };
     case "ADD_PLANNED_COURSE": {

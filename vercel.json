@@ -8,6 +8,10 @@
     "api/petition-suggestions.ts": {
       "includeFiles": "public/data/catalog.json",
       "maxDuration": 30
+    },
+    "api/network-recommendations.ts": {
+      "includeFiles": "public/data/networkResources.json",
+      "maxDuration": 30
     }
   }
 }

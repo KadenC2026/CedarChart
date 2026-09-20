@@ -5,6 +5,7 @@ import PathwayPage from "./features/pathway/PathwayPage";
 import CourseMapPage from "./features/courseMap/CourseMapPage";
 import SchedulePage from "./features/schedule/SchedulePage";
 import SocialPage from "./features/social/SocialPage";
+import NetworkPage from "./features/network/NetworkPage";
 import AccountMenu from "./components/AccountMenu";
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
           <NavLink to="/discover">Discover</NavLink>
           <NavLink to="/schedule">Schedule</NavLink>
           <NavLink to="/social">Social</NavLink>
+          <NavLink to="/network">Network</NavLink>
         </nav>
         <AccountMenu />
       </header>
@@ -29,13 +31,14 @@ export default function App() {
           <Route path="/map" element={<Navigate to="/" replace />} />
           <Route path="/schedule" element={<SchedulePage />} />
           <Route path="/social" element={<SocialPage />} />
+          <Route path="/network" element={<NetworkPage />} />
           <Route path="/explore" element={<Navigate to="/planner" replace />} />
           <Route path="/course/:courseId" element={<PathwayPage />} />
         </Routes>
       </main>
       <footer className="privacy-footer">
         <strong>Privacy:</strong> When you sign in, cedar stores your course plan, completed and prior-credit courses,
-        interests, career goal, and background-experience text in a private Firebase (Google) document tied to your
+        interests, career goal, student year, and background-experience text in a private Firebase (Google) document tied to your
         account. When you use cedar as a guest, this information stays in this browser.
       </footer>
     </div>

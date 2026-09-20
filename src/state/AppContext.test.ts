@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { reducer } from "./AppContext";
 import { earnedCourseIds } from "../domain/requirements";
 import type { AppState } from "../domain/types";
-const initial: AppState = { completedCourseIds: [], priorCredits: [], selectedCourseId: null, highlightedCourseIds: [], targetCourseId: null, interestQuery: "", careerGoal: "", backgroundExperience: "", recommendations: [], plannedCourses: [], hiddenMapCourseIds: [], priorityCourses: [], selectedRequirementId: null };
+const initial: AppState = { completedCourseIds: [], priorCredits: [], selectedCourseId: null, highlightedCourseIds: [], targetCourseId: null, interestQuery: "", careerGoal: "", backgroundExperience: "", recommendations: [], plannedCourses: [], hiddenMapCourseIds: [], priorityCourses: [], selectedRequirementId: null, studentYear: "unspecified" };
 describe("shared credit state", () => {
   it("does not treat scheduled classes as earned", () => {
     const state = reducer(initial, { type: "ADD_PLANNED_COURSE", course: { courseId: "18.01", title: "Calculus", term: 0 } });

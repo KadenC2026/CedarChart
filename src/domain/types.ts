@@ -93,7 +93,10 @@ export type AppState = {
   hiddenMapCourseIds: string[];
   priorityCourses: PriorityCourse[];
   selectedRequirementId: string | null;
+  studentYear: StudentYear;
 };
+
+export type StudentYear = "unspecified" | "first-year" | "sophomore" | "junior" | "senior" | "graduate";
 
 export type PetitionSuggestion = {
   courseId: string;

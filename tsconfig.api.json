@@ -12,5 +12,5 @@
     "types": ["node"],
     "noEmit": true
   },
-  "include": ["api", "src/domain/types.ts", "src/domain/vectorSearch.ts"]
+  "include": ["api", "src/domain/types.ts", "src/domain/vectorSearch.ts", "src/domain/networkRecommendations.ts"]
 }
