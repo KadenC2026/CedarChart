@@ -14,6 +14,7 @@ import {
   mentionedPrerequisites,
   parseSchedule,
   scheduleDays,
+  suggestCoursesThatFit,
   unavoidableConflicts,
   type MeetingBlock,
   type ScheduleCandidate,
@@ -109,6 +110,7 @@ export default function SchedulePage() {
   const [constraints, setConstraints] = useState<ScheduleConstraints>(defaultConstraints);
   const [applyTerm, setApplyTerm] = useState(0);
   const [importTerm, setImportTerm] = useState(0);
+  const [fitTerm, setFitTerm] = useState(0);
   const [sectionOverrides, setSectionOverrides] = useState<
     Record<string, Record<string, Record<string, number>>>
   >({});
@@ -149,6 +151,49 @@ export default function SchedulePage() {
     () => (query.trim() ? searchCourses(catalog, { query, filters: emptyFilters, limit: 6 }) : []),
     [catalog, query],
   );
+
+  const fitTermCourses = useMemo(
+    () => state.plannedCourses
+      .filter((planned) => planned.term === fitTerm)
+      .map((planned) => courseById.get(localId(planned.courseId)))
+      .filter((course): course is RemoteCourse => Boolean(course)),
+    [state.plannedCourses, fitTerm, courseById],
+  );
+
+  const fittingSuggestions = useMemo(() => {
+    if (!fitTermCourses.length) return [];
+    const plannedIds = new Set(state.plannedCourses.map((planned) => localId(planned.courseId)));
+    const termName = plannerTerms[fitTerm];
+    const offeredInTerm = (course: RemoteCourse) =>
+      termName.includes("Fall") ? course.offered_fall !== false
+        : termName.includes("IAP") ? course.offered_IAP !== false
+          : course.offered_spring !== false;
+    const eligible = catalog.filter((course) =>
+      !plannedIds.has(course.subject_id) &&
+      !earned.has(course.subject_id) &&
+      offeredInTerm(course) &&
+      parseSchedule(course.schedule).length > 0,
+    );
+    const personalQuery = [state.interestQuery, state.careerGoal].filter(Boolean).join(" ");
+    const personalized = personalQuery
+      ? searchCourses(eligible, { query: personalQuery, filters: emptyFilters, limit: 400 })
+      : [];
+    const seen = new Set(personalized.map((course) => course.subject_id));
+    const broadlyRanked = eligible
+      .filter((course) => !seen.has(course.subject_id))
+      .sort((a, b) =>
+        (b.rating ?? 0) - (a.rating ?? 0) ||
+        (b.enrollment_number ?? 0) - (a.enrollment_number ?? 0) ||
+        a.subject_id.localeCompare(b.subject_id, undefined, { numeric: true }),
+      )
+      .slice(0, 500);
+    return suggestCoursesThatFit(
+      fitTermCourses,
+      [...personalized, ...broadlyRanked],
+      constraints,
+      8,
+    );
+  }, [fitTermCourses, state.plannedCourses, state.interestQuery, state.careerGoal, catalog, earned, fitTerm, constraints]);
 
   const listed = new Set(state.priorityCourses.map((entry) => localId(entry.courseId)));
   const untimed = inputs.filter((entry) => !parseSchedule(entry.course.schedule).length);
@@ -272,6 +317,64 @@ export default function SchedulePage() {
         listings, so subjects taught in another term show no times and cannot be placed. Always confirm
         against the registrar before registering.
       </p>
+
+      <article className="detail-card schedule-fit-card">
+        <header>
+          <div>
+            <div className="eyebrow">Fit finder</div>
+            <h2>Classes that fit your current schedule</h2>
+            <p>
+              cedar checks every listed lecture, recitation, and lab option against the courses
+              already in this plan term.
+            </p>
+          </div>
+          <label>
+            <span>Plan term</span>
+            <select value={fitTerm} onChange={(event) => setFitTerm(Number(event.target.value))}>
+              {plannerTerms.map((term, index) => <option value={index} key={term}>{term}</option>)}
+            </select>
+          </label>
+        </header>
+
+        {!fitTermCourses.length ? (
+          <p className="data-note">Add at least one course to {plannerTerms[fitTerm]} to find classes around it.</p>
+        ) : (
+          <>
+            <p className="data-note">
+              Checking around {fitTermCourses.map((course) => course.subject_id).join(", ")} within your unit and time limits.
+              {state.interestQuery || state.careerGoal ? " Matches related to your Discover interests appear first." : " Add interests on Discover to personalize the order."}
+            </p>
+            <div className="schedule-fit-results">
+              {fittingSuggestions.map((suggestion) => (
+                <article key={suggestion.course.subject_id}>
+                  <div>
+                    <strong>{suggestion.course.subject_id}</strong>
+                    <span>{suggestion.course.title}</span>
+                    <small>{suggestion.course.total_units ?? "?"} units · {formatMeeting(suggestion.blocks)}</small>
+                  </div>
+                  <button
+                    className="add-course-button"
+                    onClick={() => dispatch({
+                      type: "ADD_PLANNED_COURSE",
+                      course: {
+                        courseId: suggestion.course.subject_id,
+                        title: suggestion.course.title,
+                        units: suggestion.course.total_units,
+                        term: fitTerm,
+                      },
+                    })}
+                  >
+                    + Add
+                  </button>
+                </article>
+              ))}
+            </div>
+            {!fittingSuggestions.length && (
+              <p className="data-note">No additional class fits the published sections and current limits for this term.</p>
+            )}
+          </>
+        )}
+      </article>
 
       <div className="schedule-layout">
         <div className="schedule-builder">

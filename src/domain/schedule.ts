@@ -174,6 +174,12 @@ export function formatMeeting(blocks: MeetingBlock[]) {
 
 export type ScheduleCourseInput = { course: RemoteCourse; tier: PriorityTier };
 
+export type CourseFitSuggestion = {
+  course: RemoteCourse;
+  choices: SectionChoice[];
+  blocks: MeetingBlock[];
+};
+
 export type ScheduleConstraints = {
   maxUnits: number;
   earliestStart: number | null;
@@ -234,6 +240,66 @@ function withinHours(blocks: MeetingBlock[], constraints: ScheduleConstraints) {
       (constraints.earliestStart === null || block.start >= constraints.earliestStart) &&
       (constraints.latestEnd === null || block.end <= constraints.latestEnd),
   );
+}
+
+function combinedCourseBlocks(
+  courses: RemoteCourse[],
+  constraints: ScheduleConstraints,
+  limit = 600,
+) {
+  const options = courses
+    .map((course) => courseAssignments(parseSchedule(course.schedule))
+      .filter((assignment) => withinHours(assignment.blocks, constraints)))
+    .filter((assignments) => assignments.length > 0)
+    .sort((a, b) => a.length - b.length);
+  if (!options.length) return [[]] as MeetingBlock[][];
+
+  const combinations: MeetingBlock[][] = [];
+  function walk(index: number, blocks: MeetingBlock[]) {
+    if (combinations.length >= limit) return;
+    if (index === options.length) {
+      combinations.push(blocks);
+      return;
+    }
+    for (const assignment of options[index]) {
+      if (blockSetsConflict(blocks, assignment.blocks)) continue;
+      walk(index + 1, [...blocks, ...assignment.blocks]);
+      if (combinations.length >= limit) return;
+    }
+  }
+  walk(0, []);
+  return combinations;
+}
+
+/**
+ * Returns courses that have at least one complete section assignment compatible
+ * with every timed course already in the selected plan term.
+ */
+export function suggestCoursesThatFit(
+  currentCourses: RemoteCourse[],
+  candidates: RemoteCourse[],
+  constraints: ScheduleConstraints = defaultConstraints,
+  limit = 8,
+): CourseFitSuggestion[] {
+  const currentUnits = currentCourses.reduce((sum, course) => sum + unitsOf(course), 0);
+  const currentIds = new Set(currentCourses.map((course) => course.subject_id));
+  const baseArrangements = combinedCourseBlocks(currentCourses, constraints);
+  if (!baseArrangements.length) return [];
+
+  const suggestions: CourseFitSuggestion[] = [];
+  for (const course of candidates) {
+    if (currentIds.has(course.subject_id)) continue;
+    if (currentUnits + unitsOf(course) > constraints.maxUnits) continue;
+    const assignments = courseAssignments(parseSchedule(course.schedule))
+      .filter((assignment) => withinHours(assignment.blocks, constraints));
+    const assignment = assignments.find((option) =>
+      baseArrangements.some((base) => !blockSetsConflict(base, option.blocks)),
+    );
+    if (!assignment) continue;
+    suggestions.push({ course, choices: assignment.choices, blocks: assignment.blocks });
+    if (suggestions.length >= limit) break;
+  }
+  return suggestions;
 }
 
 function placementMetrics(placements: Placement[]) {

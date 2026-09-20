@@ -980,6 +980,18 @@ button:disabled { cursor: default; opacity: .65; }
 .course-map-plan-actions a { color: var(--green); font-weight: 750; font-size: 13px; }
 
 /* Schedule lab: priority list, limits, and suggested weekly schedules. */
+.schedule-fit-card { margin-top: 22px; }
+.schedule-fit-card > header { display: flex; align-items: start; justify-content: space-between; gap: 24px; }
+.schedule-fit-card h2 { margin: 5px 0 8px; font-size: 24px; }
+.schedule-fit-card header p { margin: 0; color: var(--muted); }
+.schedule-fit-card header label { flex: 0 0 190px; display: grid; gap: 5px; color: var(--muted); font-size: 12px; }
+.schedule-fit-results { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.schedule-fit-results article { display: flex; align-items: center; gap: 10px; padding: 11px; border: 1px solid var(--border); border-radius: 12px; background: white; }
+.schedule-fit-results article > div { min-width: 0; flex: 1; display: grid; gap: 2px; }
+.schedule-fit-results strong { color: var(--green); }
+.schedule-fit-results span, .schedule-fit-results small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.schedule-fit-results span { font-size: 13px; }
+.schedule-fit-results small { color: var(--muted); font-size: 11px; }
 .schedule-layout {
   display: grid;
   grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
@@ -1151,6 +1163,9 @@ button:disabled { cursor: default; opacity: .65; }
 }
 
 @media (max-width: 820px) {
+  .schedule-fit-card > header { display: grid; }
+  .schedule-fit-card header label { width: 100%; }
+  .schedule-fit-results { grid-template-columns: 1fr; }
   .course-filter-panel { grid-template-columns: 1fr; gap: 16px; }
   .week-grid { grid-template-columns: 44px repeat(5, minmax(0, 1fr)); }
   .week-grid-block { font-size: 9px; }

@@ -7,6 +7,7 @@ import {
   mentionedPrerequisites,
   parseMeetingTime,
   parseSchedule,
+  suggestCoursesThatFit,
   unavoidableConflicts,
   type ScheduleCourseInput,
 } from "./schedule";
@@ -170,6 +171,30 @@ describe("suggested schedules", () => {
 
   it("returns nothing for an empty list", () => {
     expect(buildScheduleCandidates([])).toEqual([]);
+  });
+});
+
+describe("courses that fit an existing term", () => {
+  const current = course({ subject_id: "6.1200", title: "Math for CS", schedule: "Lecture,26-100/TR/0/2.30-4" });
+  const alternateFits = course({
+    subject_id: "18.06",
+    title: "Linear Algebra",
+    schedule: "Lecture,2-190/TR/0/3-4.30,2-190/MW/0/10-11.30",
+  });
+  const alwaysClashes = course({ subject_id: "6.1210", title: "Algorithms", schedule: "Lecture,32-123/TR/0/3-4" });
+
+  it("keeps a course when at least one section option avoids the current term", () => {
+    const suggestions = suggestCoursesThatFit([current], [alwaysClashes, alternateFits]);
+    expect(suggestions.map((entry) => entry.course.subject_id)).toEqual(["18.06"]);
+    expect(formatMeeting(suggestions[0].blocks)).toBe("MW 10:00 AM–11:30 AM");
+  });
+
+  it("respects the term unit cap", () => {
+    expect(suggestCoursesThatFit(
+      [current],
+      [alternateFits],
+      { maxUnits: 12, earliestStart: null, latestEnd: null },
+    )).toEqual([]);
   });
 });
 
