@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import {
+import handler, {
   groundedAiResults,
   keywordResults,
   retrieveCandidates,
   type CatalogCourse,
-} from "./_recommendation";
+} from "./recommend";
 
 const catalog: CatalogCourse[] = [
   {
@@ -55,5 +55,35 @@ describe("AI recommendation retrieval", () => {
       courseId: "mit:6.4200",
       recommendationMethod: "keyword",
     });
+  });
+
+  it("loads the serverless route and serves catalog results without an API key", async () => {
+    const originalApiKey = process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+
+    let statusCode = 0;
+    let body: { method?: string; results?: Array<{ courseId: string }> } = {};
+    const response = {
+      status(code: number) {
+        statusCode = code;
+        return this;
+      },
+      json(payload: typeof body) {
+        body = payload;
+        return this;
+      },
+    };
+
+    try {
+      await handler({ method: "POST", body: { query: "robotics" } }, response);
+    } finally {
+      if (originalApiKey === undefined) delete process.env.OPENAI_API_KEY;
+      else process.env.OPENAI_API_KEY = originalApiKey;
+    }
+
+    expect(statusCode).toBe(200);
+    expect(body.method).toBe("keyword");
+    expect(body.results?.length).toBeGreaterThan(0);
+    expect(body.results?.every((result) => result.courseId.startsWith("mit:"))).toBe(true);
   });
 });
