@@ -889,21 +889,9 @@ button:disabled { cursor: default; opacity: .65; }
   left: 18px;
   display: flex;
   align-items: center;
-  gap: 10px;
-}
-.course-map-mini-brand {
-  border: 0;
-  background: #fff;
-  color: var(--green);
-  border-radius: 10px;
-  padding: 11px 14px;
-  font-weight: 800;
-  font-size: 20px;
-  box-shadow: 0 1px 6px rgba(32,33,36,.2);
-  cursor: pointer;
 }
 .course-map-floating-search form {
-  width: min(430px, calc(100vw - 120px));
+  width: min(430px, calc(100vw - 36px));
   display: flex;
   align-items: center;
   background: #fff;
@@ -1093,7 +1081,6 @@ button:disabled { cursor: default; opacity: .65; }
     right: 12px;
     left: 12px;
   }
-  .course-map-mini-brand { display: none; }
   .course-map-floating-search form { width: 100%; }
   .course-map-info-card {
     left: 12px;

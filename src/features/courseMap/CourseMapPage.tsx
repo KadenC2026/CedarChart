@@ -403,14 +403,6 @@ export default function CourseMapPage() {
     if (!visible && selectedFamilyId === family.id) setSelectedFamilyId(null);
   }
 
-  function resetSearch() {
-    setTargetFamilyId(null);
-    setSelectedFamilyId(null);
-    setQuery("");
-    setNextCourseResults([]);
-    setMapSearchNote(null);
-  }
-
   function addSelectedToSchedule() {
     if (!selected) return;
     const course = selected.primary;
@@ -602,7 +594,6 @@ export default function CourseMapPage() {
   return (
     <section className="course-map-shell">
       <div className="course-map-floating-search">
-        <button className="course-map-mini-brand" onClick={resetSearch}>cedar</button>
         <form onSubmit={submit}>
           <input
             aria-label="Search another MIT course"
