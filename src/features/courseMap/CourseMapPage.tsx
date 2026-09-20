@@ -1286,7 +1286,7 @@ export default function CourseMapPage() {
       <section className="course-map-home">
         <div className="course-map-home-inner">
           <div className="course-map-release">Course map</div>
-          <div className="course-map-wordmark">cedar</div>
+          <div className="course-map-wordmark">TrackMIT</div>
           <form className="course-map-search-home" onSubmit={submit}>
             <span className="course-map-search-icon" aria-hidden="true">
               {mapSearchLoading ? <span className="course-map-ai-spinner" /> : "⌕"}
@@ -1607,7 +1607,7 @@ export default function CourseMapPage() {
             <div className="course-map-rule">
               <span>Variant note</span>
               <p>
-                cedar displays these as one course family in the map. Individual catalog
+                TrackMIT displays these as one course family in the map. Individual catalog
                 versions can still differ in units, offering terms, or exact prerequisite wording.
               </p>
             </div>

@@ -46,14 +46,14 @@ export default function AccountMenu() {
       </button>
       {open && (
         <div className="account-popover">
-          <strong>Save cedar to your account</strong>
-          <p>Continue with Google to save and sync your cedar plan.</p>
+          <strong>Save your TrackMIT plan</strong>
+          <p>Continue with Google to sync your plan.</p>
           <button className="google-sign-in" disabled={auth.loading || !auth.configured} onClick={() => void auth.signInWithGoogle()}>
             <span aria-hidden="true">G</span> Continue with Google
           </button>
           {!auth.configured && <p className="account-setup-note">Sign-in will turn on after the Firebase environment values are added in Vercel.</p>}
           {auth.message && <p className="method-note" aria-live="polite">{auth.message}</p>}
-          <small>Google handles authentication; cedar never sees your password.</small>
+          <small>Google handles authentication; TrackMIT never sees your password.</small>
         </div>
       )}
     </div>

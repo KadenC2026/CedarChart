@@ -12,7 +12,7 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <NavLink to="/" className="brand">cedar</NavLink>
+        <NavLink to="/" className="brand">TrackMIT</NavLink>
         <nav>
           <NavLink to="/" end>Map</NavLink>
           <NavLink to="/planner">Plan</NavLink>
@@ -37,9 +37,7 @@ export default function App() {
         </Routes>
       </main>
       <footer className="privacy-footer">
-        <strong>Privacy:</strong> When you sign in, cedar stores your course plan, completed and prior-credit courses,
-        interests, career goal, student year, and background-experience text in a private Firebase (Google) document tied to your
-        account. When you use cedar as a guest, this information stays in this browser.
+        <strong>Privacy:</strong> Signed-in plans sync to your private account. Guest plans stay in this browser.
       </footer>
     </div>
   );

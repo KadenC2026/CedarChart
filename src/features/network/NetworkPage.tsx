@@ -74,13 +74,13 @@ export default function NetworkPage() {
       <div className="eyebrow">Research & career</div>
       <h1>Find the right MIT doors.</h1>
       <p className="lede">
-        cedar matches your existing interests, goals, experience, and coursework with current labs, UROPs,
+        TrackMIT matches your interests, goals, experience, and coursework with current labs, UROPs,
         makerspaces, innovation programs, and career events.
       </p>
 
       <div className="network-profile-bar">
         <div>
-          <strong>{hasProfile ? "Using your cedar profile" : "Add profile context for personal matches"}</strong>
+          <strong>{hasProfile ? "Using your TrackMIT profile" : "Add profile context for personal matches"}</strong>
           <span>
             {hasProfile
               ? [profile.interestQuery, profile.careerGoal, `${courseIds.length} course${courseIds.length === 1 ? "" : "s"}`].filter(Boolean).join(" · ")
@@ -183,7 +183,7 @@ export default function NetworkPage() {
       </div>
 
       <p className="network-source-note">
-        cedar only ranks the official MIT resources shown here. It does not invent openings or send messages for you.
+        TrackMIT ranks only the official MIT resources shown here.
         A lab may welcome a thoughtful inquiry even when it has no advertised UROP; confirm availability with the listed contact.
       </p>
     </section>

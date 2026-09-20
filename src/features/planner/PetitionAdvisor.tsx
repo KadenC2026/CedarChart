@@ -55,7 +55,7 @@ export default function PetitionAdvisor({ catalog }: { catalog: RemoteCourse[] }
       <div className="eyebrow">Preparation check</div>
       <h2>Courses you may be ready to discuss skipping</h2>
       <p className="data-note">
-        Describe prior coursework, exams, or projects. cedar compares it with real catalog descriptions and the prerequisites in your plan.
+        Describe prior coursework, exams, or projects. TrackMIT compares it with catalog descriptions and your plan.
       </p>
       <label htmlFor="background-experience">Your background</label>
       <textarea

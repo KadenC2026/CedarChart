@@ -324,7 +324,7 @@ export default function SchedulePage() {
             <div className="eyebrow">Fit finder</div>
             <h2>Classes that fit your current schedule</h2>
             <p>
-              cedar checks every listed lecture, recitation, and lab option against the courses
+              TrackMIT checks listed lecture, recitation, and lab options against the courses
               already in this plan term.
             </p>
           </div>

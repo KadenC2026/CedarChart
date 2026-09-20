@@ -123,12 +123,11 @@ export default function DiscoveryPage() {
   return (
     <section className="page hero-page">
       <div className="eyebrow">
-        AI course discovery
+        Course discovery
       </div>
-      <h1>Find your next MIT course.</h1>
+      <h1>Find the right next course.</h1>
       <p className="lede">
-        Describe what you want to learn or build. cedar matches it to real subjects and shows
-        how each course fits into a progression.
+        Describe an interest. TrackMIT matches it to MIT subjects and their prerequisite paths.
       </p>
 
       <div className="search-card">
@@ -137,7 +136,7 @@ export default function DiscoveryPage() {
           id="interest"
           value={state.interestQuery}
           onChange={(event) => dispatch({ type: "SET_QUERY", query: event.target.value })}
-          placeholder="Describe an interest — AI will match it to MIT subjects."
+          placeholder="Describe an interest or goal"
           rows={3}
         />
         <div className="example-row">

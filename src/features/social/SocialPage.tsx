@@ -48,7 +48,7 @@ export default function SocialPage() {
       <div className="eyebrow">Community</div>
       <h1>Find your MIT people.</h1>
       <p className="lede">
-        cedar uses your plan and interests to point you toward classmates, course communities, and clubs.
+        TrackMIT uses your plan and interests to point you toward classmates, course communities, and clubs.
       </p>
 
       <section
@@ -90,7 +90,7 @@ export default function SocialPage() {
 
       <div className="social-context-bar">
         <div>
-          <strong>{hasProfile ? "Personalized from your cedar profile" : "Add context for better suggestions"}</strong>
+          <strong>{hasProfile ? "Personalized from your TrackMIT profile" : "Add context for better suggestions"}</strong>
           <span>
             {hasProfile
               ? state.interestQuery || `${planned.length} planned course${planned.length === 1 ? "" : "s"}`
@@ -108,7 +108,7 @@ export default function SocialPage() {
             Pset Partners matches MIT students by class, availability, and preferred group style. MIT login is required.
           </p>
           {uniqueCourses.length ? (
-            <div className="social-course-list" aria-label="Courses from your cedar plan">
+            <div className="social-course-list" aria-label="Courses from your TrackMIT plan">
               {uniqueCourses.slice(0, 8).map((course) => (
                 <span key={course.courseId} title={`${course.title} · ${termLabel(course.term)}`}>{course.courseId}</span>
               ))}
@@ -182,7 +182,7 @@ export default function SocialPage() {
       </div>
 
       <p className="social-privacy-note">
-        cedar suggests official places to connect, including club officers listed on MIT Engage. It does not publish
+        TrackMIT suggests official places to connect, including club officers listed on MIT Engage. It does not publish
         another student’s plan, profile, or contact details.
       </p>
     </section>

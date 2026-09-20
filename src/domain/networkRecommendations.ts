@@ -70,7 +70,7 @@ export function rankNetworkResources(
     .map(({ resource, keywordHits, courseHits }) => {
       const signals = [...keywordHits.slice(0, 3), ...courseHits.slice(0, 2)];
       const matchReason = hasContext && signals.length
-        ? `Matches ${signals.join(", ")} from your cedar profile.`
+        ? `Matches ${signals.join(", ")} from your TrackMIT profile.`
         : "A useful starting point for finding current MIT opportunities and contacts.";
       return {
         ...resource,
