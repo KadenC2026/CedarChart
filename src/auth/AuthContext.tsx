@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(() => {
         window.localStorage.removeItem(EMAIL_STORAGE_KEY);
         cleanAuthUrl();
-        setMessage("Signed in. Your Cedar plan will now sync to this account.");
+        setMessage("Signed in. Your cedar plan will now sync to this account.");
       })
       .catch(() => setMessage("That sign-in link is invalid or expired. Request a new one."))
       .finally(() => setLoading(false));
@@ -87,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const provider = new GoogleAuthProvider();
         provider.setCustomParameters({ prompt: "select_account" });
         await signInWithPopup(firebaseAuth, provider);
-        setMessage("Signed in. Your Cedar plan will now sync to this account.");
+        setMessage("Signed in. Your cedar plan will now sync to this account.");
       } catch (error: any) {
         if (error?.code !== "auth/popup-closed-by-user") setMessage("Google sign-in could not be completed. Please try again.");
       } finally {
@@ -132,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         window.localStorage.removeItem(EMAIL_STORAGE_KEY);
         cleanAuthUrl();
         setPendingEmailLink(false);
-        setMessage("Signed in. Your Cedar plan will now sync to this account.");
+        setMessage("Signed in. Your cedar plan will now sync to this account.");
       } catch {
         setMessage("That sign-in link is invalid or expired. Request a new one.");
       } finally {
@@ -141,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     async signOut() {
       if (firebaseAuth) await firebaseSignOut(firebaseAuth);
-      setMessage("Signed out. Cedar is using this browser's local plan.");
+      setMessage("Signed out. cedar is using this browser's local plan.");
     },
   }), [loading, message, pendingEmailLink, user]);
 

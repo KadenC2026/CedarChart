@@ -199,6 +199,69 @@ textarea:focus, input:focus, select:focus { border-color: var(--green); box-shad
   .account-trigger { padding: 7px 9px; font-size: 11px; }
 }
 
+/* Social discovery: class partners, clubs, project teams, and mentors. */
+.social-page { max-width: 1040px; }
+.social-page > h1 { font-size: clamp(40px, 6vw, 62px); }
+.social-context-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin: 32px 0 18px;
+  padding: 16px 18px;
+  border: 1px solid #bfd1c1;
+  border-radius: 16px;
+  background: var(--green-soft);
+}
+.social-context-bar > div { min-width: 0; display: grid; gap: 3px; }
+.social-context-bar span { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.social-primary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.social-feature-card, .social-theme-card {
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: 0 12px 35px rgba(33, 45, 36, .05);
+}
+.social-feature-card { display: flex; flex-direction: column; padding: 24px; }
+.social-card-kicker { color: var(--green); font-size: 11px; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
+.social-feature-card h2 { margin: 7px 0 10px; font-size: 25px; }
+.social-feature-card > p { color: var(--muted); line-height: 1.5; }
+.social-course-list { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 4px; }
+.social-course-list span, .social-search-terms span {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fbfaf6;
+  color: var(--green);
+  padding: 6px 9px;
+  font-size: 12px;
+  font-weight: 800;
+}
+.social-course-sites { display: grid; gap: 7px; margin-top: 4px; }
+.social-course-sites a { display: grid; gap: 1px; border-top: 1px solid var(--border); padding-top: 8px; text-decoration: none; }
+.social-course-sites strong { color: var(--green); font-size: 13px; }
+.social-course-sites span { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.social-card-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: auto; padding-top: 20px; }
+.social-card-actions a { color: var(--green); font-size: 14px; font-weight: 800; }
+.social-card-actions .primary-link { border-radius: 11px; background: var(--green); color: white; padding: 10px 14px; text-decoration: none; }
+.social-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin: 42px 0 16px; }
+.social-section-heading h2 { margin: 6px 0 0; font-size: 28px; }
+.social-section-heading > a { color: var(--green); font-size: 13px; font-weight: 800; }
+.social-theme-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.social-theme-card { padding: 19px; }
+.social-theme-card h3 { margin: 0 0 7px; font-size: 19px; }
+.social-theme-card p { margin: 0; color: var(--muted); line-height: 1.45; }
+.social-theme-card small { display: block; margin: 11px 0; color: var(--green); font-weight: 750; }
+.social-search-terms { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.social-search-terms span { padding: 4px 7px; font-size: 10px; }
+.social-theme-card > a { color: var(--green); font-size: 13px; font-weight: 800; }
+.social-privacy-note { margin-top: 24px; color: var(--muted); font-size: 12px; text-align: center; }
+
+@media (max-width: 820px) {
+  .social-primary-grid, .social-theme-grid { grid-template-columns: 1fr; }
+  .social-context-bar, .social-section-heading { align-items: flex-start; flex-direction: column; }
+  .social-context-bar span { white-space: normal; }
+}
+
 
 /* CourseRoad-style planning experience */
 .planner-heading { max-width: 860px; margin-bottom: 28px; }

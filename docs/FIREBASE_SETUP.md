@@ -1,6 +1,6 @@
-# Cedar account setup
+# cedar account setup
 
-Cedar uses Firebase Authentication for Google sign-in and passwordless `@mit.edu`
+cedar uses Firebase Authentication for Google sign-in and passwordless `@mit.edu`
 email links. Cloud state is stored in one private Firestore document per Firebase
 user and protected by `firestore.rules`.
 
@@ -33,7 +33,7 @@ These Firebase web configuration values are designed to be public. Access is
 controlled by Firebase Authentication and the Firestore rules. Do not add a
 Firebase Admin service-account key to the browser app.
 
-Redeploy Cedar after adding the variables. Confirm all three paths:
+Redeploy cedar after adding the variables. Confirm all three paths:
 
 1. Continue with Google, reload, and sign out.
 2. Request a link for an `@mit.edu` address and open it in the same browser.

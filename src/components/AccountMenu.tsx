@@ -53,7 +53,7 @@ export default function AccountMenu() {
       </button>
       {open && (
         <div className="account-popover">
-          <strong>Save Cedar to your account</strong>
+          <strong>Save cedar to your account</strong>
           <p>Continue with Google, or get a passwordless link at your MIT email.</p>
           <button className="google-sign-in" disabled={auth.loading || !auth.configured} onClick={() => void auth.signInWithGoogle()}>
             <span aria-hidden="true">G</span> Continue with Google
@@ -75,7 +75,7 @@ export default function AccountMenu() {
           </form>
           {!auth.configured && <p className="account-setup-note">Sign-in will turn on after the Firebase environment values are added in Vercel.</p>}
           {auth.message && <p className="method-note" aria-live="polite">{auth.message}</p>}
-          <small>No password is collected by Cedar.</small>
+          <small>No password is collected by cedar.</small>
         </div>
       )}
     </div>
