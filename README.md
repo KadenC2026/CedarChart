@@ -17,6 +17,7 @@ cedar helps MIT students discover interesting courses and understand the prerequ
 - Schedule lab (experimental): rank the classes you want, see which pairs overlap under
   every section option, and compare up to four conflict-free weekly schedules
 - Completed-course tracking persisted in localStorage
+- Optional Google or passwordless MIT-email sign-in with private cloud saves
 - Official MIT catalog source links
 
 ## Run locally
@@ -58,6 +59,14 @@ Recommended host: Vercel.
 - Output directory: `dist`
 - Add `OPENAI_API_KEY` in Vercel Environment Variables. `OPENAI_MODEL` and `OPENAI_EMBEDDING_MODEL` are optional.
 - Redeploy after adding the environment variable. `vercel.json` bundles the checked-in catalog with the recommendation function.
+
+## Account setup
+
+Google and passwordless MIT-email sign-in use Firebase Authentication. Signed-in
+state is saved to a private Firestore document that only the matching Firebase
+user can read or write; guest state remains in local storage. Follow
+[`docs/FIREBASE_SETUP.md`](docs/FIREBASE_SETUP.md) before enabling account controls
+in production.
 
 ## Catalog, requirements, and prior credit
 

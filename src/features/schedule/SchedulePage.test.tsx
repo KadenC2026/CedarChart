@@ -4,6 +4,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { AppProvider } from "../../state/AppContext";
+import { AuthProvider } from "../../auth/AuthContext";
 import SchedulePage from "./SchedulePage";
 
 const courses = [
@@ -66,11 +67,13 @@ describe("schedule lab page", () => {
   it("builds suggestions from a priority list and explains the overlap", async () => {
     const user = userEvent.setup();
     render(
-      <AppProvider>
-        <MemoryRouter>
-          <SchedulePage />
-        </MemoryRouter>
-      </AppProvider>,
+      <AuthProvider>
+        <AppProvider>
+          <MemoryRouter>
+            <SchedulePage />
+          </MemoryRouter>
+        </AppProvider>
+      </AuthProvider>,
     );
 
     await waitFor(() => expect(screen.getByText("Priority list")).toBeTruthy());
@@ -94,11 +97,13 @@ describe("schedule lab page", () => {
   it("reports subjects that have no listed meeting times", async () => {
     const user = userEvent.setup();
     render(
-      <AppProvider>
-        <MemoryRouter>
-          <SchedulePage />
-        </MemoryRouter>
-      </AppProvider>,
+      <AuthProvider>
+        <AppProvider>
+          <MemoryRouter>
+            <SchedulePage />
+          </MemoryRouter>
+        </AppProvider>
+      </AuthProvider>,
     );
 
     await waitFor(() => expect(screen.getByText("Priority list")).toBeTruthy());

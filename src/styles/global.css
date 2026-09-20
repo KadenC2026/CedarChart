@@ -20,6 +20,17 @@ button, input, textarea, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 a { color: inherit; }
 
+.privacy-footer {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 18px 24px 30px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+  text-align: center;
+}
+.privacy-footer strong { color: var(--ink); }
+
 .topbar {
   height: 72px; display: flex; align-items: center; justify-content: space-between;
   padding: 0 max(24px, calc((100vw - 1180px)/2)); border-bottom: 1px solid var(--border);
@@ -29,6 +40,69 @@ a { color: inherit; }
 .topbar nav { display: flex; gap: 10px; }
 .topbar nav a { text-decoration: none; padding: 9px 14px; border-radius: 999px; color: var(--muted); }
 .topbar nav a.active { background: var(--green-soft); color: var(--green); }
+.account-menu { position: relative; }
+.account-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 220px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--green);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.account-trigger > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-avatar {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--green);
+  color: white;
+  font-size: 11px;
+}
+.account-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 20;
+  width: min(350px, calc(100vw - 24px));
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 18px 48px rgba(24, 33, 27, .18);
+}
+.account-popover > span, .account-popover > small { color: var(--muted); font-size: 12px; }
+.account-popover > p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.account-popover form { display: grid; gap: 8px; }
+.account-popover form label { font-size: 12px; font-weight: 800; }
+.google-sign-in {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: white;
+  color: var(--ink);
+  padding: 10px 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.google-sign-in span { color: #4285f4; font-size: 17px; font-weight: 900; }
+.account-divider { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 11px; }
+.account-divider::before, .account-divider::after { content: ""; height: 1px; flex: 1; background: var(--border); }
+.account-setup-note { padding: 9px 10px; border-radius: 10px; background: #f3ebdc; color: #705329 !important; }
 
 .page { max-width: 1180px; margin: 0 auto; padding: 64px 24px 80px; }
 .hero-page { max-width: 900px; }
@@ -112,7 +186,17 @@ textarea:focus, input:focus, select:focus { border-color: var(--green); box-shad
   .explore-layout, .pathway-grid { grid-template-columns:1fr; }
   .graph-wrap { height:500px; }
   .topbar { padding:0 16px; }
+  .topbar nav { gap: 2px; }
+  .topbar nav a { padding: 8px 9px; font-size: 12px; }
+  .account-trigger.signed-in > span:last-child { display: none; }
   .page { padding:42px 16px 60px; }
+}
+
+@media (max-width: 620px) {
+  .topbar { height: 64px; padding: 0 10px; }
+  .brand { font-size: 18px; }
+  .topbar nav a { padding: 7px 6px; font-size: 11px; }
+  .account-trigger { padding: 7px 9px; font-size: 11px; }
 }
 
 

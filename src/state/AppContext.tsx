@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useReducer, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import type {
   AppState,
   InterestSearchResult,
@@ -7,6 +8,8 @@ import type {
   PriorityCourse,
   PriorityTier,
 } from "../domain/types";
+import { useAuth } from "../auth/AuthContext";
+import { firebaseDb } from "../auth/firebase";
 
 type Action =
   | { type: "SELECT_COURSE"; courseId: string }
@@ -29,6 +32,7 @@ type Action =
   | { type: "MOVE_PRIORITY_COURSE"; courseId: string; direction: -1 | 1 }
   | { type: "SET_PRIORITY_TIER"; courseId: string; tier: PriorityTier }
   | { type: "CLEAR_PRIORITY_COURSES" }
+  | { type: "REPLACE_STATE"; state: AppState }
   | { type: "RESET" };
 
 const initialState: AppState = {
@@ -141,31 +145,133 @@ export function reducer(state: AppState, action: Action): AppState {
       };
     case "CLEAR_PRIORITY_COURSES":
       return { ...state, priorityCourses: [] };
+    case "REPLACE_STATE":
+      return action.state;
     case "RESET":
       return initialState;
   }
 }
 
-const AppContext = createContext<{ state: AppState; dispatch: React.Dispatch<Action> } | null>(null);
+export type SyncStatus = "local" | "loading" | "saving" | "synced" | "error";
+
+const AppContext = createContext<{
+  state: AppState;
+  dispatch: React.Dispatch<Action>;
+  syncStatus: SyncStatus;
+} | null>(null);
 const STORAGE_KEY = "cedar-state";
 const LEGACY_STORAGE_KEY = "cedarchart-state";
+const USER_CACHE_PREFIX = "cedar-user-state:";
+
+function restoredState(value: unknown): AppState {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return initialState;
+  return { ...initialState, ...(value as Partial<AppState>) };
+}
+
+function readCachedUserState(key: string) {
+  try {
+    const saved = localStorage.getItem(key);
+    return saved ? restoredState(JSON.parse(saved)) : null;
+  } catch {
+    return null;
+  }
+}
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const { user, loading: authLoading } = useAuth();
   const [state, dispatch] = useReducer(reducer, initialState, (base) => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
-      return saved ? { ...base, ...JSON.parse(saved) } : base;
+      return saved ? restoredState(JSON.parse(saved)) : base;
     } catch {
       return base;
     }
   });
+  const [cloudReadyUid, setCloudReadyUid] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>("local");
+  const stateRef = useRef(state);
+  const previousUidRef = useRef<string | null | undefined>(undefined);
+  const guestStateRef = useRef(state);
+  const restoringGuestRef = useRef(false);
+  stateRef.current = state;
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    localStorage.removeItem(LEGACY_STORAGE_KEY);
-  }, [state]);
+    if (authLoading) return;
+    const uid = user?.uid ?? null;
+    if (!uid) {
+      setCloudReadyUid(null);
+      setSyncStatus("local");
+      if (previousUidRef.current) {
+        restoringGuestRef.current = true;
+        dispatch({ type: "REPLACE_STATE", state: guestStateRef.current });
+      }
+      previousUidRef.current = null;
+      return;
+    }
 
-  return <AppContext.Provider value={{ state, dispatch }}>{children}</AppContext.Provider>;
+    previousUidRef.current = uid;
+    const signedInUid = uid;
+    const cloudDb = firebaseDb;
+    setCloudReadyUid(null);
+    setSyncStatus("loading");
+    let cancelled = false;
+
+    async function loadCloudState() {
+      if (!cloudDb) return;
+      try {
+        const reference = doc(cloudDb, "users", signedInUid);
+        const snapshot = await getDoc(reference);
+        if (cancelled) return;
+        if (snapshot.exists() && snapshot.data().state) {
+          dispatch({ type: "REPLACE_STATE", state: restoredState(snapshot.data().state) });
+        } else {
+          await setDoc(reference, { state: stateRef.current, updatedAt: serverTimestamp() }, { merge: true });
+        }
+        if (!cancelled) {
+          setCloudReadyUid(uid);
+          setSyncStatus("synced");
+        }
+      } catch {
+        if (cancelled) return;
+        const cached = readCachedUserState(`${USER_CACHE_PREFIX}${signedInUid}`);
+        if (cached) dispatch({ type: "REPLACE_STATE", state: cached });
+        setSyncStatus("error");
+      }
+    }
+
+    void loadCloudState();
+    return () => { cancelled = true; };
+  }, [authLoading, user?.uid]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      if (restoringGuestRef.current) {
+        restoringGuestRef.current = false;
+        return;
+      }
+      guestStateRef.current = state;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+      return;
+    }
+    localStorage.setItem(`${USER_CACHE_PREFIX}${user.uid}`, JSON.stringify(state));
+  }, [authLoading, state, user]);
+
+  useEffect(() => {
+    const cloudDb = firebaseDb;
+    if (!cloudDb || !user || cloudReadyUid !== user.uid) return;
+    const uid = user.uid;
+    setSyncStatus("saving");
+    const timeout = window.setTimeout(() => {
+      setDoc(doc(cloudDb, "users", uid), { state, updatedAt: serverTimestamp() }, { merge: true })
+        .then(() => setSyncStatus("synced"))
+        .catch(() => setSyncStatus("error"));
+    }, 450);
+    return () => window.clearTimeout(timeout);
+  }, [cloudReadyUid, state, user]);
+
+  return <AppContext.Provider value={{ state, dispatch, syncStatus }}>{children}</AppContext.Provider>;
 }
 
 export function useApp() {
