@@ -1,6 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import ELK from "elkjs/lib/elk.bundled.js";
 import {
   BaseEdge,
   Background,
@@ -57,7 +56,6 @@ type LogicNodeData = {
 };
 
 type RoutedEdgeData = {
-  elkPoints?: Array<{ x: number; y: number }>;
   channelRatio?: number;
   routeLaneOffset?: number;
   routeSide?: "above" | "below";
@@ -68,123 +66,6 @@ type RoutedEdgeData = {
 };
 
 type RoutedEdge = Edge<RoutedEdgeData, "routed">;
-
-const elk = new ELK();
-
-function graphNodeSize(node: Node, logic?: LogicNodeData) {
-  if (node.id.startsWith("logic:")) {
-    return logic?.kind === "any"
-      ? { width: 260, height: 56 + Math.ceil(Math.max(1, logic.optionFamilies.length + (logic.instructorPermissionCourseId ? 1 : 0)) / 2) * 54 }
-      : { width: 44, height: 92 };
-  }
-  return { width: 210, height: 82 };
-}
-
-export async function layoutGraphWithElk(
-  graph: GraphData,
-  plannedTermByFamilyId = new Map<string, number>(),
-) {
-  const layout = await elk.layout({
-    id: "cedar-course-map",
-    layoutOptions: {
-      "elk.algorithm": "layered",
-      "elk.direction": "RIGHT",
-      "elk.edgeRouting": "ORTHOGONAL",
-      "elk.spacing.nodeNode": "58",
-      "elk.spacing.edgeNode": "32",
-      "elk.layered.spacing.nodeNodeBetweenLayers": "130",
-      "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
-      "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
-      "elk.layered.considerModelOrder.strategy": "PREFER_NODES",
-    },
-    children: graph.nodes.map((node) => {
-      const { width, height } = graphNodeSize(node, graph.logicByNodeId.get(node.id));
-      return {
-        id: node.id,
-        width,
-        height,
-        layoutOptions: { "elk.portConstraints": "FIXED_SIDE" },
-        ports: [
-          { id: `${node.id}:in`, layoutOptions: { "elk.port.side": "WEST" } },
-          { id: `${node.id}:out`, layoutOptions: { "elk.port.side": "EAST" } },
-        ],
-      };
-    }),
-    edges: graph.edges.map((edge) => ({
-      id: edge.id,
-      sources: [`${edge.source}:out`],
-      targets: [`${edge.target}:in`],
-    })),
-  });
-  const positioned = new Map((layout.children ?? []).map((node) => [node.id, node]));
-  const routed = new Map<string, { startPoint: { x: number; y: number }; endPoint: { x: number; y: number }; bendPoints?: Array<{ x: number; y: number }> } | undefined>(
-    (layout.edges ?? []).map((edge) => {
-      const sections = (edge as { sections?: Array<{ startPoint: { x: number; y: number }; endPoint: { x: number; y: number }; bendPoints?: Array<{ x: number; y: number }> }> }).sections;
-      return [edge.id, sections?.[0]];
-    }),
-  );
-  const laidOutNodes = graph.nodes.map((node) => {
-      const position = positioned.get(node.id);
-      return position?.x == null || position.y == null
-        ? node
-        : { ...node, position: { x: position.x, y: position.y } };
-    });
-
-  // The planned curriculum is a timeline, so its rows are deliberately a hard
-  // constraint: every scheduled card for a term has the exact same Y coordinate.
-  // Prior-credit cards have no planned term and keep ELK's natural placement.
-  const scheduledTerms = [...new Set(
-    laidOutNodes.flatMap((node) => {
-      const family = graph.familyByNodeId.get(node.id);
-      const term = family ? plannedTermByFamilyId.get(family.id) : undefined;
-      return term == null ? [] : [term];
-    }),
-  )].sort((a, b) => a - b);
-  const termY = new Map(scheduledTerms.map((term, index) => [term, index * 168]));
-  const strictTermLayout = termY.size > 0;
-  const nodes = laidOutNodes.map((node) => {
-    const family = graph.familyByNodeId.get(node.id);
-    const term = family ? plannedTermByFamilyId.get(family.id) : undefined;
-    const y = term == null ? node.position.y : termY.get(term)!;
-    return { ...node, position: { ...node.position, y } };
-  });
-
-  // A hard row may place two cards from the same term too close together after
-  // ELK's initial ordering. Shift only horizontally so the row remains exact.
-  for (const term of scheduledTerms) {
-    const row = nodes
-      .filter((node) => {
-        const family = graph.familyByNodeId.get(node.id);
-        return family && plannedTermByFamilyId.get(family.id) === term;
-      })
-      .sort((a, b) => a.position.x - b.position.x);
-    for (let index = 1; index < row.length; index += 1) {
-      const previous = row[index - 1];
-      const current = row[index];
-      const previousSize = graphNodeSize(previous, graph.logicByNodeId.get(previous.id));
-      if (current.position.x < previous.position.x + previousSize.width + 32) {
-        current.position = { ...current.position, x: previous.position.x + previousSize.width + 32 };
-      }
-    }
-  }
-
-  return {
-    nodes,
-    edges: graph.edges.map((edge) => {
-      const section = routed.get(edge.id);
-      const elkPoints = section
-        ? [section.startPoint, ...(section.bendPoints ?? []), section.endPoint]
-        : undefined;
-      return {
-        ...edge,
-        type: "routed",
-        // ELK's bend points refer to the original positions. Once strict term
-        // rows move cards, fall back to Cedar's live orthogonal router instead.
-        data: { ...(edge.data ?? {}), ...(strictTermLayout || !elkPoints ? {} : { elkPoints }) },
-      };
-    }),
-  };
-}
 
 function orderLayersToReduceCrossings(
   layers: Map<number, string[]>,
@@ -319,9 +200,6 @@ function PrerequisiteEdge({
   style,
   data,
 }: EdgeProps<RoutedEdge>) {
-  if (data?.elkPoints?.length) {
-    return <BaseEdge id={id} path={roundedPath(data.elkPoints)} markerEnd={markerEnd} style={style} />;
-  }
   const routedSourceY = sourceY + (data?.sourceOffset ?? 0);
   const routedTargetY = targetY + (data?.targetOffset ?? 0);
   const direction = Math.sign(targetX - sourceX) || 1;
@@ -957,8 +835,6 @@ export default function CourseMapPage() {
   const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null);
   const [scheduleTerm, setScheduleTerm] = useState(0);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
-  const [elkEdges, setElkEdges] = useState<Edge[] | null>(null);
-  const [tidyLoading, setTidyLoading] = useState(false);
   const [nextCourseResults, setNextCourseResults] = useState<Array<NextCourseRecommendation & { explanation?: string; method?: string }>>([]);
   const [nextCourseLoading, setNextCourseLoading] = useState(false);
   const [mapSearchLoading, setMapSearchLoading] = useState(false);
@@ -1068,23 +944,11 @@ export default function CourseMapPage() {
   const draggedPositionsRef = useRef(new Map<string, { x: number; y: number }>());
 
   useEffect(() => {
-    let cancelled = false;
-    if (!graph) {
-      setFlowNodes([]);
-      setElkEdges(null);
-      return () => { cancelled = true; };
-    }
-
-    // ELK is the default view. Any cards the student has personally moved stay
-    // where they put them, so a graph update never falls back to a second layout.
-    void layoutGraphWithElk(graph, plannedTermByFamilyId).then((layout) => {
-      if (cancelled) return;
-      const tidiedGraph = { ...graph, nodes: layout.nodes };
-      setFlowNodes((current) => reconcileGraphNodes(tidiedGraph, current, draggedPositionsRef.current));
-      setElkEdges(layout.edges);
+    setFlowNodes((current) => {
+      if (!graph) return [];
+      return reconcileGraphNodes(graph, current, draggedPositionsRef.current);
     });
-    return () => { cancelled = true; };
-  }, [graph, plannedTermByFamilyId, setFlowNodes]);
+  }, [graph, setFlowNodes]);
 
   const selected =
     selectedFamilyId
@@ -1243,19 +1107,6 @@ export default function CourseMapPage() {
         term: scheduleTerm,
       },
     });
-  }
-
-  async function tidyMap() {
-    if (!graph || tidyLoading) return;
-    draggedPositionsRef.current.clear();
-    setTidyLoading(true);
-    try {
-      const layout = await layoutGraphWithElk(graph, plannedTermByFamilyId);
-      setFlowNodes(layout.nodes);
-      setElkEdges(layout.edges);
-    } finally {
-      setTidyLoading(false);
-    }
   }
 
   async function findLogicalNextCourses() {
@@ -1448,16 +1299,13 @@ export default function CourseMapPage() {
           onChoose={chooseFamily}
           compact
         />
-        <button className="course-map-tidy-button" type="button" onClick={tidyMap} disabled={tidyLoading}>
-          {tidyLoading ? "Tidying map…" : "✦ Tidy map"}
-        </button>
       </div>
 
       <div className="course-map-canvas">
         <ReactFlow
           key={graphTargets.map((family) => family.id).join("|")}
           nodes={flowNodes}
-          edges={elkEdges ?? graph.edges}
+          edges={graph.edges}
           edgeTypes={edgeTypes}
           fitView
           fitViewOptions={{ padding: 0.2 }}

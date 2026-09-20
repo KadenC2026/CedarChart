@@ -1000,20 +1000,6 @@ button:disabled { cursor: default; opacity: .65; }
   margin-top: 7px;
   overflow-y: auto;
 }
-.course-map-tidy-button {
-  align-self: flex-start;
-  margin-top: 8px;
-  border: 1px solid #b8cbbd;
-  border-radius: 999px;
-  background: rgba(255,255,255,.96);
-  color: var(--green);
-  padding: 7px 10px;
-  box-shadow: 0 1px 5px rgba(32,33,36,.14);
-  font-size: 11px;
-  font-weight: 800;
-  cursor: pointer;
-}
-.course-map-tidy-button:hover { background: var(--green-soft); }
 @keyframes course-map-spin { to { transform: rotate(360deg); } }
 .course-map-node {
   width: 210px !important;
