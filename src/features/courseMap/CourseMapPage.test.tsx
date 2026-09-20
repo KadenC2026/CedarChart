@@ -128,6 +128,35 @@ describe("course map forest layout", () => {
     expect(Math.max(...offsets as number[])).toBeGreaterThanOrEqual(16);
   });
 
+  it("keeps course and choice cards from overlapping", () => {
+    const catalog = [
+      course("1.001", "Foundation A"),
+      course("1.002", "Foundation B"),
+      course("1.003", "Alternative destination", "1.001/1.002"),
+      course("1.004", "Direct destination", "1.001"),
+      course("1.005", "Final destination", "1.003, 1.004"),
+    ];
+    const { families } = buildCourseFamilies(catalog);
+    const targets = families.filter((family) => ["1.003", "1.004", "1.005"].includes(family.id));
+    const graph = buildPrerequisiteForest(targets, families);
+    const bounds = graph.nodes.map((node) => ({
+      id: node.id,
+      x: node.position.x,
+      y: node.position.y,
+      width: node.id.startsWith("logic:") ? (node.className?.includes("any") ? 260 : 44) : 210,
+      height: node.id.startsWith("logic:") ? (node.className?.includes("any") ? 164 : 92) : 82,
+    }));
+
+    for (let left = 0; left < bounds.length; left += 1) {
+      for (let right = left + 1; right < bounds.length; right += 1) {
+        const a = bounds[left];
+        const b = bounds[right];
+        const overlaps = a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+        expect(overlaps, `${a.id} and ${b.id} should not overlap`).toBe(false);
+      }
+    }
+  });
+
   it("orders connected branches to avoid a needless crossing", () => {
     const catalog = [
       course("1.001", "Alpha"),

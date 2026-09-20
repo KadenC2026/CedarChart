@@ -641,6 +641,41 @@ export function buildPrerequisiteForest(
       });
     }
 
+    const nodeWidth = (id: string) => {
+      const logic = logicByNodeId.get(id);
+      return logic?.kind === "any" ? 260 : logic ? 44 : 210;
+    };
+    const nodeCenterY = (id: string) => {
+      const position = nodePosition.get(id);
+      return (position?.y ?? 0) + estimatedNodeHeight(id) / 2;
+    };
+    // Term lanes and compact logic nodes can bring neighboring columns close
+    // together. Resolve those rectangle collisions before calculating ports.
+    for (let pass = 0; pass < 12; pass += 1) {
+      let moved = false;
+      const idsByPosition = [...nodePosition.keys()].sort((a, b) =>
+        (nodePosition.get(a)?.x ?? 0) - (nodePosition.get(b)?.x ?? 0) ||
+        (nodePosition.get(a)?.y ?? 0) - (nodePosition.get(b)?.y ?? 0),
+      );
+      for (let left = 0; left < idsByPosition.length; left += 1) {
+        for (let right = left + 1; right < idsByPosition.length; right += 1) {
+          const a = idsByPosition[left];
+          const b = idsByPosition[right];
+          const aPosition = nodePosition.get(a)!;
+          const bPosition = nodePosition.get(b)!;
+          const horizontalOverlap = Math.min(aPosition.x + nodeWidth(a), bPosition.x + nodeWidth(b)) - Math.max(aPosition.x, bPosition.x);
+          const verticalOverlap = Math.min(aPosition.y + estimatedNodeHeight(a), bPosition.y + estimatedNodeHeight(b)) - Math.max(aPosition.y, bPosition.y);
+          if (horizontalOverlap <= 0 || verticalOverlap <= 0) continue;
+          const moveId = aPosition.x === bPosition.x
+            ? (aPosition.y <= bPosition.y ? b : a)
+            : (aPosition.x < bPosition.x ? b : a);
+          nodePosition.get(moveId)!.y += verticalOverlap + 18;
+          moved = true;
+        }
+      }
+      if (!moved) break;
+    }
+
     const actualComponentBottom = Math.max(
       ...[...nodePosition.entries()].map(([id, position]) => position.y + estimatedNodeHeight(id)),
       componentTop + componentHeight,
@@ -666,7 +701,7 @@ export function buildPrerequisiteForest(
 
     for (const edgesFromSource of groupEdges((edge) => edge.source)) {
       const ordered = [...edgesFromSource].sort((a, b) =>
-        (nodePosition.get(a.target)?.y ?? 0) - (nodePosition.get(b.target)?.y ?? 0) || a.id.localeCompare(b.id),
+        nodeCenterY(a.target) - nodeCenterY(b.target) || a.id.localeCompare(b.id),
       );
       ordered.forEach((edge, index) => updateEdgeData(edge, {
         sourceOffset: portOffset(index, ordered.length),
@@ -674,7 +709,7 @@ export function buildPrerequisiteForest(
     }
     for (const edgesToTarget of groupEdges((edge) => edge.target)) {
       const ordered = [...edgesToTarget].sort((a, b) =>
-        (nodePosition.get(a.source)?.y ?? 0) - (nodePosition.get(b.source)?.y ?? 0) || a.id.localeCompare(b.id),
+        nodeCenterY(a.source) - nodeCenterY(b.source) || a.id.localeCompare(b.id),
       );
       ordered.forEach((edge, index) => updateEdgeData(edge, {
         targetOffset: portOffset(index, ordered.length),
@@ -692,7 +727,11 @@ export function buildPrerequisiteForest(
       }
       return groups.values();
     })()) {
-      edgesInGap.forEach((edge, index) => {
+      const ordered = [...edgesInGap].sort((a, b) =>
+        (nodeCenterY(a.source) + nodeCenterY(a.target)) - (nodeCenterY(b.source) + nodeCenterY(b.target)) ||
+        a.id.localeCompare(b.id),
+      );
+      ordered.forEach((edge, index) => {
         updateEdgeData(edge, {
           channelRatio: (index + 1) / (edgesInGap.length + 1),
         });
