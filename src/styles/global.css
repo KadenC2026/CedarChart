@@ -587,16 +587,28 @@ button:disabled { cursor: default; opacity: .65; }
 .compact-road-grid {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  min-width: 0;
+  overflow: auto;
+  align-content: start;
+  align-items: start;
+  grid-auto-rows: max-content;
+  scrollbar-gutter: stable;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 9px;
   padding-right: 3px;
 }
 .compact-road-grid .term-card {
+  min-width: 0;
   min-height: 120px;
   padding: 11px;
   border-radius: 13px;
 }
+.compact-road-grid .term-heading,
+.compact-road-grid .term-courses,
+.compact-road-grid .planned-course,
+.compact-road-grid .planned-course > button:first-child { min-width: 0; }
+.compact-road-grid .planned-course { max-width: 100%; }
+.compact-road-grid .planned-course > button:first-child { overflow: hidden; }
 .compact-road-grid .term-heading h2 { font-size: 13px; }
 .compact-road-grid .term-heading span { font-size: 10px; }
 .compact-road-grid .term-courses {
@@ -605,13 +617,20 @@ button:disabled { cursor: default; opacity: .65; }
 }
 .compact-road-grid .planned-course > button:first-child { padding: 7px; }
 .compact-road-grid .planned-course strong { font-size: 12px; }
+.compact-road-grid .planned-course strong,
+.compact-road-grid .planned-course span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .compact-road-grid .planned-course span { font-size: 10px; }
 .compact-road-grid .empty-term {
   padding: 8px;
   font-size: 11px;
 }
-.compact-road-grid .remove-course { width: 28px; }
-.compact-road-grid .planned-completed { padding: 5px; }
+.compact-road-grid .remove-course { flex: 0 0 28px; width: 28px; }
+.compact-road-grid .planned-completed { flex: 0 0 auto; padding: 5px; }
 
 .planner-right-pane {
   overflow-y: auto;
