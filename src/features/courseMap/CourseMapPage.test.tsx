@@ -50,6 +50,23 @@ describe("course map forest layout", () => {
     expect(graph.nodes[0].className).toContain("term-color-6");
   });
 
+  it("gently aligns scheduled courses that share a term", () => {
+    const catalog = [
+      course("1.001", "First foundation"),
+      course("1.002", "Second foundation"),
+      course("1.003", "Destination", "1.001, 1.002"),
+    ];
+    const { families } = buildCourseFamilies(catalog);
+    const graph = buildPrerequisiteForest(
+      families,
+      families,
+      new Map([["1.001", 2], ["1.003", 2]]),
+    );
+    const positions = new Map(graph.nodes.map((node) => [node.id, node.position]));
+
+    expect(Math.abs(positions.get("1.001")!.y - positions.get("1.003")!.y)).toBeLessThan(40);
+  });
+
   it("treats prior-credit courses as satisfied, colored prerequisite roots", () => {
     const catalog = [
       course("1.000", "Foundation"),
@@ -90,6 +107,24 @@ describe("course map forest layout", () => {
     expect(graph.edges.every((edge) => edge.type === "routed")).toBe(true);
     expect(directEdge?.data?.routeLaneOffset).toEqual(expect.any(Number));
     expect(adjacentEdge?.data?.routeLaneOffset).toBeUndefined();
+  });
+
+  it("spreads fan-out arrows across separate card ports", () => {
+    const catalog = [
+      course("1.001", "Foundation"),
+      course("1.002", "First branch", "1.001"),
+      course("1.003", "Second branch", "1.001"),
+      course("1.004", "Third branch", "1.001"),
+    ];
+    const { families } = buildCourseFamilies(catalog);
+    const targets = families.filter((family) => ["1.002", "1.003", "1.004"].includes(family.id));
+    const graph = buildPrerequisiteForest(targets, families);
+    const offsets = graph.edges
+      .filter((edge) => edge.source === "1.001")
+      .map((edge) => edge.data?.sourceOffset);
+
+    expect(new Set(offsets).size).toBe(3);
+    expect(Math.max(...offsets as number[])).toBeGreaterThanOrEqual(16);
   });
 
   it("orders connected branches to avoid a needless crossing", () => {

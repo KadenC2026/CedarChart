@@ -1157,17 +1157,17 @@ button:disabled { cursor: default; opacity: .65; }
 .course-map-node.course-map-scheduled .course-map-node-content strong { color: var(--term-ink); }
 .course-map-planned-term { color: var(--term-ink); font-weight: 800; }
 .course-map-node.course-map-credited {
-  border: 1px solid #c39a45 !important;
-  border-left: 5px solid #a87518 !important;
-  background: #fff8e7 !important;
+  border: 1px solid #7b89c7 !important;
+  border-left: 5px solid #5868b0 !important;
+  background: #f0f2ff !important;
 }
 .course-map-node.course-map-credited.course-map-target {
-  border-color: #a87518 !important;
+  border-color: #5868b0 !important;
   border-left-width: 5px !important;
-  box-shadow: 0 8px 24px rgba(168, 117, 24, .2) !important;
+  box-shadow: 0 8px 24px rgba(88, 104, 176, .24) !important;
 }
 .course-map-node.course-map-credited .course-map-node-content strong,
-.course-map-credit-status { color: #79520f; }
+.course-map-credit-status { color: #404f91; }
 .course-map-credit-status { font-weight: 800; }
 .course-map-node-content {
   display: grid;
@@ -1292,8 +1292,8 @@ button:disabled { cursor: default; opacity: .65; }
 .course-map-pinned-course { display: inline-flex; overflow: hidden; border: 1px solid #bfd1c1; border-radius: 999px; background: var(--green-soft); }
 .course-map-pinned-course button { border: 0; background: transparent; color: var(--green); padding: 6px 3px 6px 9px; font-size: 12px; font-weight: 800; cursor: pointer; }
 .course-map-pinned-course button:last-child { padding: 6px 8px 6px 4px; color: var(--muted); }
-.course-map-pinned-credit { border-color: #dbc48d; background: #fff4d9; }
-.course-map-pinned-credit button { color: #79520f; }
+.course-map-pinned-credit { border-color: #a8b1dc; background: #f0f2ff; }
+.course-map-pinned-credit button { color: #404f91; }
 .course-map-loading {
   height: calc(100vh - 72px);
   display: grid;

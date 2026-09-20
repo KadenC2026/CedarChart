@@ -147,7 +147,7 @@ function PrerequisiteEdge({
   const routedTargetY = targetY + (data?.targetOffset ?? 0);
   const direction = Math.sign(targetX - sourceX) || 1;
   const horizontalDistance = Math.abs(targetX - sourceX);
-  const elbowClearance = Math.min(86, Math.max(34, horizontalDistance * 0.2));
+  const elbowClearance = Math.min(98, Math.max(42, horizontalDistance * 0.23));
   const channelStart = sourceX + direction * elbowClearance;
   const channelEnd = targetX - direction * elbowClearance;
   const channelX = channelStart + (channelEnd - channelStart) * (data?.channelRatio ?? 0.5);
@@ -484,7 +484,7 @@ export function buildPrerequisiteForest(
     const layerHeight = (idsInLayer: string[]) =>
       idsInLayer.reduce((sum, id) => sum + estimatedNodeHeight(id), 0) +
       Math.max(0, idsInLayer.length - 1) * verticalNodeGap;
-    const componentHeight = Math.max(
+  const componentHeight = Math.max(
       90,
       ...[...layers.values()].map(layerHeight),
     );
@@ -494,6 +494,19 @@ export function buildPrerequisiteForest(
     const routingBand = Math.max(componentGap, 70 + longEdges.length * 22);
     const componentTop = nextComponentY + routingBand;
     const nodePosition = new Map<string, { x: number; y: number }>();
+    const termOccurrences = new Map<number, number>();
+    for (const id of component) {
+      const term = familyByNodeId.get(id) ? plannedTermByFamilyId.get(id) : undefined;
+      if (term != null) termOccurrences.set(term, (termOccurrences.get(term) ?? 0) + 1);
+    }
+    const alignedTerms = [...termOccurrences]
+      .filter(([, count]) => count > 1)
+      .map(([term]) => term)
+      .sort((a, b) => a - b);
+    const termLaneY = new Map(alignedTerms.map((term, index) => [
+      term,
+      componentTop + ((index + 1) * componentHeight) / (alignedTerms.length + 1) - 41,
+    ]));
 
     for (const [layer, layerIds] of [...layers.entries()].sort((a, b) => a[0] - b[0])) {
       const currentLayerHeight = layerHeight(layerIds);
@@ -506,8 +519,13 @@ export function buildPrerequisiteForest(
         // Course cards keep their dependency rank but are gently staggered so the
         // graph reads as a connected map rather than a rigid spreadsheet grid.
         const horizontalStagger = family ? ((index % 3) - 1) * 30 : 0;
-        const position = { x: layer + horizontalStagger, y: currentY };
-        currentY += estimatedNodeHeight(id) + verticalNodeGap;
+        const defaultY = currentY;
+        const laneY = plannedTerm == null ? undefined : termLaneY.get(plannedTerm);
+        // A shared term lane gives students a visual row for related planned
+        // subjects without overriding the dependency ordering that keeps arrows readable.
+        const y = laneY == null ? defaultY : defaultY + (laneY - defaultY) * 0.45;
+        const position = { x: layer + horizontalStagger, y };
+        currentY = Math.max(defaultY + estimatedNodeHeight(id) + verticalNodeGap, y + estimatedNodeHeight(id) + verticalNodeGap);
         nodePosition.set(id, position);
         nodes.push({
           id,
@@ -581,7 +599,7 @@ export function buildPrerequisiteForest(
     };
     const portOffset = (index: number, count: number) => {
       if (count === 1) return 0;
-      const step = Math.min(12, 36 / (count - 1));
+      const step = Math.min(16, 48 / (count - 1));
       return (index - (count - 1) / 2) * step;
     };
 
@@ -641,7 +659,11 @@ export function buildPrerequisiteForest(
       routeLaneOffset: 54 + index * 24,
     }));
 
-    nextComponentY = componentTop + componentHeight;
+    const actualComponentBottom = Math.max(
+      ...[...nodePosition.entries()].map(([id, position]) => position.y + estimatedNodeHeight(id)),
+      componentTop + componentHeight,
+    );
+    nextComponentY = actualComponentBottom;
   }
 
   return { nodes, edges, familyByNodeId, logicByNodeId, replacementPositionSourceByNodeId };
