@@ -1165,6 +1165,19 @@ button:disabled { cursor: default; opacity: .65; }
   border-left-width: 5px !important;
   box-shadow: 0 8px 24px color-mix(in srgb, var(--term-accent) 25%, transparent) !important;
 }
+.course-map-node.course-map-permission-waived {
+  border-color: #b08316 !important;
+  border-left: 5px solid #b08316 !important;
+  background: #fff7dc !important;
+}
+.course-map-permission-status {
+  display: block;
+  margin-top: 5px;
+  color: #78570d;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.25;
+}
 .course-map-node.course-map-scheduled .course-map-node-content strong { color: var(--term-ink); }
 .course-map-planned-term { color: var(--term-ink); font-weight: 800; }
 .course-map-node.course-map-credited {

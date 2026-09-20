@@ -531,8 +531,13 @@ function buildPrerequisiteGraph(
 
   // Only selected roots reveal prerequisites. A prerequisite that is also selected
   // is expanded by its own tree when the forest merges the selected roots.
-  const expression = parseCatalogPrerequisites(target.primary.prerequisites ?? "");
-  if (expression) connectExpression(expression, target.id, target.primary.subject_id, true);
+  const instructorPermissionWaivesPrerequisites = instructorPermissionCourseIds.has(`mit:${target.primary.subject_id}`);
+  // A recorded waiver replaces the prerequisite branches for this course. The
+  // card remains in the map, visibly marked so the planning assumption is clear.
+  if (!instructorPermissionWaivesPrerequisites) {
+    const expression = parseCatalogPrerequisites(target.primary.prerequisites ?? "");
+    if (expression) connectExpression(expression, target.id, target.primary.subject_id, true);
+  }
 
   return {
     nodes: [],
@@ -722,6 +727,7 @@ export function buildPrerequisiteForest(
             ? "course-map-node" +
               (plannedTerm == null ? "" : ` course-map-scheduled ${termColorClass(plannedTerm)}`) +
               (plannedTerm == null && creditLabel ? " course-map-credited" : "") +
+              (instructorPermissionCourseIds.has(`mit:${family.primary.subject_id}`) ? " course-map-permission-waived" : "") +
               (targetIds.has(id) ? " course-map-target" : "")
             : `course-map-logic-node course-map-logic-${logic?.kind ?? "all"}`,
           data: {
@@ -731,6 +737,7 @@ export function buildPrerequisiteForest(
                 <span>{family.title}</span>
                 {plannedTerm != null && <small className="course-map-planned-term">Scheduled · {termLabel(plannedTerm)}</small>}
                 {plannedTerm == null && creditLabel && <small className="course-map-credit-status">{creditLabel}</small>}
+                {instructorPermissionCourseIds.has(`mit:${family.primary.subject_id}`) && <small className="course-map-permission-status">Instructor permission · prerequisites waived</small>}
                 {family.members.length > 1 && <small>{family.members.length} variants merged</small>}
               </div>
             ) : logic?.kind === "any" ? (
@@ -1061,12 +1068,23 @@ export default function CourseMapPage() {
   const draggedPositionsRef = useRef(new Map<string, { x: number; y: number }>());
 
   useEffect(() => {
-    setFlowNodes((current) => {
-      if (!graph) return [];
-      return reconcileGraphNodes(graph, current, draggedPositionsRef.current);
+    let cancelled = false;
+    if (!graph) {
+      setFlowNodes([]);
+      setElkEdges(null);
+      return () => { cancelled = true; };
+    }
+
+    // ELK is the default view. Any cards the student has personally moved stay
+    // where they put them, so a graph update never falls back to a second layout.
+    void layoutGraphWithElk(graph, plannedTermByFamilyId).then((layout) => {
+      if (cancelled) return;
+      const tidiedGraph = { ...graph, nodes: layout.nodes };
+      setFlowNodes((current) => reconcileGraphNodes(tidiedGraph, current, draggedPositionsRef.current));
+      setElkEdges(layout.edges);
     });
-    setElkEdges(null);
-  }, [graph, setFlowNodes]);
+    return () => { cancelled = true; };
+  }, [graph, plannedTermByFamilyId, setFlowNodes]);
 
   const selected =
     selectedFamilyId

@@ -165,12 +165,27 @@ describe("course map forest layout", () => {
     ];
     const { families } = buildCourseFamilies(catalog);
     const target = families.find((family) => family.id === "1.003")!;
-    const graph = buildPrerequisiteForest([target], families, new Map(), new Map(), new Set(["mit:1.003"]));
+    const graph = buildPrerequisiteForest([target], families);
     const choice = [...graph.logicByNodeId.values()].find((logic) => logic.kind === "any");
 
     expect(choice?.optionFamilies.map((family) => family.id)).toEqual(["1.001", "1.002"]);
     expect(choice?.instructorPermissionCourseId).toBe("1.003");
-    expect(choice?.instructorPermissionSelected).toBe(true);
+    expect(choice?.instructorPermissionSelected).toBe(false);
+  });
+
+  it("replaces a waived course's prerequisite branches with a marked course card", () => {
+    const catalog = [
+      course("1.001", "Foundation A"),
+      course("1.002", "Foundation B"),
+      course("1.003", "Alternative destination", "1.001/1.002"),
+    ];
+    const { families } = buildCourseFamilies(catalog);
+    const target = families.find((family) => family.id === "1.003")!;
+    const graph = buildPrerequisiteForest([target], families, new Map(), new Map(), new Set(["mit:1.003"]));
+
+    expect(graph.nodes.map((node) => node.id)).toEqual(["1.003"]);
+    expect(graph.nodes[0].className).toContain("course-map-permission-waived");
+    expect(graph.edges).toEqual([]);
   });
 
   it("uses ELK to give tidy map non-overlapping card positions and routed edges", async () => {
