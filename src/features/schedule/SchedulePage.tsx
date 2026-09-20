@@ -4,6 +4,7 @@ import { useCatalog } from "../../data/catalog";
 import { emptyFilters, searchCourses } from "../../domain/courseSearch";
 import { earnedCourseIds, localId } from "../../domain/requirements";
 import {
+  blocksOverlap,
   buildScheduleCandidates,
   dayLabels,
   defaultConstraints,
@@ -40,7 +41,13 @@ function meetingSummary(course: RemoteCourse) {
 
 function WeekGrid({ candidate }: { candidate: ScheduleCandidate }) {
   const blocks = candidate.entries.flatMap((entry) =>
-    entry.blocks.map((block) => ({ ...block, subjectId: entry.subjectId })),
+    entry.choices.flatMap((choice) =>
+      choice.option.blocks.map((block) => ({
+        ...block,
+        subjectId: entry.subjectId,
+        kind: choice.kind.toUpperCase(),
+      })),
+    ),
   );
   if (!blocks.length) return null;
 
@@ -73,9 +80,9 @@ function WeekGrid({ candidate }: { candidate: ScheduleCandidate }) {
                   className="week-grid-block"
                   key={block.subjectId + index}
                   style={position(block)}
-                  title={`${block.subjectId} ${formatHour(block.start)}–${formatHour(block.end)}`}
+                  title={`${block.subjectId} ${block.kind} ${formatHour(block.start)}–${formatHour(block.end)}`}
                 >
-                  <strong>{block.subjectId}</strong>
+                  <strong>{block.subjectId} {block.kind}</strong>
                   <span>{formatHour(block.start)}</span>
                 </div>
               ))}
@@ -94,6 +101,9 @@ export default function SchedulePage() {
   const [constraints, setConstraints] = useState<ScheduleConstraints>(defaultConstraints);
   const [applyTerm, setApplyTerm] = useState(0);
   const [importTerm, setImportTerm] = useState(0);
+  const [sectionOverrides, setSectionOverrides] = useState<
+    Record<string, Record<string, Record<string, number>>>
+  >({});
 
   const courseById = useMemo(
     () => new Map(catalog.map((course) => [course.subject_id, course])),
@@ -134,6 +144,78 @@ export default function SchedulePage() {
 
   const listed = new Set(state.priorityCourses.map((entry) => localId(entry.courseId)));
   const untimed = inputs.filter((entry) => !parseSchedule(entry.course.schedule).length);
+
+  function optionMatches(
+    left: { location: string; blocks: MeetingBlock[] },
+    right: { location: string; blocks: MeetingBlock[] },
+  ) {
+    return left.location === right.location && formatMeeting(left.blocks) === formatMeeting(right.blocks);
+  }
+
+  function setSectionOverride(
+    candidateId: string,
+    subjectId: string,
+    kind: string,
+    optionIndex: number,
+  ) {
+    setSectionOverrides((current) => ({
+      ...current,
+      [candidateId]: {
+        ...(current[candidateId] ?? {}),
+        [subjectId]: {
+          ...(current[candidateId]?.[subjectId] ?? {}),
+          [kind]: optionIndex,
+        },
+      },
+    }));
+  }
+
+  function withSectionOverrides(candidate: ScheduleCandidate): ScheduleCandidate {
+    const overrides = sectionOverrides[candidate.id] ?? {};
+    const entries = candidate.entries.map((entry) => {
+      const course = courseById.get(entry.subjectId);
+      const sections = parseSchedule(course?.schedule);
+      const choices = entry.choices.map((choice) => {
+        const section = sections.find((item) => item.kind === choice.kind);
+        const selectedIndex = overrides[entry.subjectId]?.[choice.kind];
+        const option =
+          selectedIndex !== undefined && section?.options[selectedIndex]
+            ? section.options[selectedIndex]
+            : choice.option;
+        return { ...choice, option };
+      });
+      return {
+        ...entry,
+        choices,
+        blocks: choices.flatMap((choice) => choice.option.blocks),
+      };
+    });
+    return { ...candidate, entries };
+  }
+
+  function manualOverlap(candidate: ScheduleCandidate) {
+    const blocks = candidate.entries.flatMap((entry) =>
+      entry.choices.flatMap((choice) =>
+        choice.option.blocks.map((block) => ({
+          ...block,
+          subjectId: entry.subjectId,
+          kind: choice.kind,
+        })),
+      ),
+    );
+
+    for (let i = 0; i < blocks.length; i += 1) {
+      for (let j = i + 1; j < blocks.length; j += 1) {
+        if (
+          (blocks[i].subjectId !== blocks[j].subjectId || blocks[i].kind !== blocks[j].kind) &&
+          blocksOverlap(blocks[i], blocks[j])
+        ) {
+          return `${blocks[i].subjectId} ${blocks[i].kind.toUpperCase()} overlaps ${blocks[j].subjectId} ${blocks[j].kind.toUpperCase()}.`;
+        }
+      }
+    }
+    return null;
+  }
 
   function applyToPlan(candidate: ScheduleCandidate) {
     for (const entry of candidate.entries) {
@@ -403,7 +485,11 @@ export default function SchedulePage() {
             </p>
           )}
 
-          {candidates.map((candidate) => (
+          {candidates.map((candidate) => {
+            const displayedCandidate = withSectionOverrides(candidate);
+            const overlap = manualOverlap(displayedCandidate);
+
+            return (
             <article className="schedule-candidate" key={candidate.id}>
               <header>
                 <div>
@@ -420,20 +506,59 @@ export default function SchedulePage() {
                 </div>
               </header>
 
-              <WeekGrid candidate={candidate} />
+              <WeekGrid candidate={displayedCandidate} />
+
+              {overlap && (
+                <p className="schedule-manual-conflict">
+                  Manual section conflict: {overlap}
+                </p>
+              )}
 
               <ul className="schedule-entry-list">
-                {candidate.entries.map((entry) => (
+                {displayedCandidate.entries.map((entry) => {
+                  const course = courseById.get(entry.subjectId);
+                  const sections = parseSchedule(course?.schedule);
+                  return (
                   <li key={entry.subjectId}>
                     <strong>{entry.subjectId}</strong> {entry.title}
-                    <span className="data-note">
-                      {entry.choices
-                        .map((choice) => `${choice.kind} ${formatMeeting(choice.option.blocks)} · ${choice.option.location}`)
-                        .join(" | ")}
-                    </span>
+                    <div className="schedule-section-controls">
+                      {entry.choices.map((choice) => {
+                        const section = sections.find((item) => item.kind === choice.kind);
+                        if (!section) return null;
+                        const overridden = sectionOverrides[candidate.id]?.[entry.subjectId]?.[choice.kind];
+                        const originalIndex = section.options.findIndex((option) =>
+                          optionMatches(option, choice.option),
+                        );
+                        const selectedIndex = overridden ?? Math.max(0, originalIndex);
+                        return (
+                          <label key={choice.kind}>
+                            <span>{choice.kind.toUpperCase()}</span>
+                            <select
+                              value={selectedIndex}
+                              onChange={(event) =>
+                                setSectionOverride(
+                                  candidate.id,
+                                  entry.subjectId,
+                                  choice.kind,
+                                  Number(event.target.value),
+                                )
+                              }
+                            >
+                              {section.options.map((option, optionIndex) => (
+                                <option value={optionIndex} key={optionIndex}>
+                                  {choice.kind.toUpperCase()} {optionIndex + 1} · {formatMeeting(option.blocks)}
+                                  {option.location ? ` · ${option.location}` : ""}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        );
+                      })}
+                    </div>
                     {entry.tier === "required" && <span className="chip chip-on">Must take</span>}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
 
               {candidate.excluded.length > 0 && (
@@ -454,12 +579,13 @@ export default function SchedulePage() {
                     ))}
                   </select>
                 </label>
-                <button className="secondary-button" onClick={() => applyToPlan(candidate)}>
-                  Add {candidate.entries.length} course{candidate.entries.length === 1 ? "" : "s"} to plan
+                <button className="secondary-button" onClick={() => applyToPlan(displayedCandidate)}>
+                  Add {displayedCandidate.entries.length} course{displayedCandidate.entries.length === 1 ? "" : "s"} to plan
                 </button>
               </div>
             </article>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>
