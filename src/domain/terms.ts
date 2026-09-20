@@ -12,6 +12,12 @@ export function termLabel(index: number) {
   return plannerTerms[index] ?? `Term ${index + 1}`;
 }
 
+/** A stable visual token for each slot in the four-year planner. */
+export function termColorClass(index: number) {
+  const normalized = ((index % plannerTerms.length) + plannerTerms.length) % plannerTerms.length;
+  return `term-color-${normalized + 1}`;
+}
+
 export function termKeyForIndex(index: number): TermKey {
   const position = ((index % 3) + 3) % 3;
   if (position === 0) return "fall";

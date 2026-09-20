@@ -6,7 +6,7 @@ import { courseWebsiteFor } from "../../data/courseSites";
 import { earnedCourseIds, evaluateRequirement, isArchivedRequirement, localId, requirementLabel } from "../../domain/requirements";
 import RequirementChecklist from "./RequirementChecklist";
 import PriorCreditPanel from "./PriorCreditPanel";
-import { plannerTerms as terms } from "../../domain/terms";
+import { plannerTerms as terms, termColorClass } from "../../domain/terms";
 import { useApp } from "../../state/AppContext";
 import { requestCourseRecommendations, type GroundedCourseRecommendation } from "../../domain/aiCourseSearch";
 import PetitionAdvisor from "./PetitionAdvisor";
@@ -182,7 +182,10 @@ export default function PlannerPage() {
               const planned = state.plannedCourses.filter((course) => course.term === termIndex);
               const units = planned.reduce((sum, course) => sum + (course.units ?? 0), 0);
               return (
-                <article className={`term-card ${activeTerm === termIndex ? "active-term" : ""}`} key={term}>
+                <article
+                  className={`term-card ${termColorClass(termIndex)} ${activeTerm === termIndex ? "active-term" : ""}`}
+                  key={term}
+                >
                   <div className="term-heading">
                     <h2>{term}</h2>
                     <span>{units} units</span>
