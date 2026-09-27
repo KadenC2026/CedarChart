@@ -28,3 +28,9 @@ describe("network recommendations", () => {
     expect(matches[0].id).toBe("eaps");
   });
 });
+
+
+it("does not fill profile recommendations with unrelated resources", () => {
+  expect(rankNetworkResources(resources, { interestQuery: "pottery ceramics", careerGoal: "",
+    backgroundExperience: "", courseIds: [], studentYear: "" })).toEqual([]);
+});

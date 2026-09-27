@@ -51,6 +51,10 @@ describe("petition suggestion grounding", () => {
     expect(results[0]).toMatchObject({ courseId: "18.02", recommendationMethod: "AI", prerequisiteFor: ["6.3900"] });
   });
 
+  it("does not infer background from planned prerequisites alone", () => {
+    expect(petitionCandidates(catalog, "pottery ceramics", ["6.3900"])).toEqual([]);
+  });
+
   it("builds cautious catalog fallback copy", () => {
     const candidates = petitionCandidates(catalog, "Python programming", ["6.3900"]);
     expect(catalogPetitionSuggestions(candidates)[0]).toMatchObject({

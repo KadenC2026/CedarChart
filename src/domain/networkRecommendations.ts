@@ -52,7 +52,7 @@ export function rankNetworkResources(
 ): NetworkMatch[] {
   const profileText = [profile.interestQuery, profile.careerGoal, profile.backgroundExperience].filter(Boolean).join(" ");
   const profileTokens = new Set(tokens(profileText));
-  const hasContext = Boolean(profileTokens.size || profile.courseIds.length);
+  const hasContext = Boolean(profileText.trim() || profile.courseIds.length);
 
   return resources
     .map((resource, index) => {
@@ -65,6 +65,7 @@ export function rankNetworkResources(
       const score = keywordHits.length * 18 + courseHits.length * 7 + foundationalBoost - index / 100;
       return { resource, keywordHits, courseHits, score };
     })
+    .filter(({ keywordHits, courseHits }) => !hasContext || keywordHits.length > 0 || courseHits.length > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
     .map(({ resource, keywordHits, courseHits }) => {
