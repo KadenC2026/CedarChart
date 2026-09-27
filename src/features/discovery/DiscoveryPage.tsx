@@ -98,6 +98,12 @@ export default function DiscoveryPage() {
         return;
       }
 
+      if (data.method === "AI") {
+        dispatch({ type: "SET_RECOMMENDATIONS", results: [] });
+        setMethodNote("No closely matching courses found with these filters. Try broadening your interests or goal.");
+        return;
+      }
+
       dispatch({ type: "SET_RECOMMENDATIONS", results: local });
       setMethodNote(local.length
         ? "Showing deterministic matches from the imported MIT catalog."

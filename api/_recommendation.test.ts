@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import handler, {
   groundedAiResults,
   keywordResults,
@@ -6,6 +6,9 @@ import handler, {
   translatedKeywordResults,
   type CatalogCourse,
 } from "./recommend";
+
+const rank = vi.hoisted(() => vi.fn());
+vi.mock("openai", () => ({ default: class { responses = { create: rank }; } }));
 
 const catalog: CatalogCourse[] = [
   {
@@ -104,4 +107,26 @@ describe("AI recommendation retrieval", () => {
     expect(body.results?.length).toBeGreaterThan(0);
     expect(body.results?.every((result) => result.courseId.startsWith("mit:"))).toBe(true);
   });
+});
+
+
+it("uses a career-only request and preserves the model's no-match decision", async () => {
+  const key = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = "test-only";
+  rank.mockResolvedValueOnce({ status: "completed", output_text: JSON.stringify({
+    intentSummary: "Robotics career", englishQuery: "robotics", coreTopic: "robotics",
+    searchTerms: ["robots", "control", "robotics"],
+  }) }).mockResolvedValueOnce({ status: "completed", output_text: '{"results":[]}' });
+  let body: any;
+  const res = { status() { return this; }, json(value: any) { body = value; return this; } };
+  try {
+    await handler({ method: "POST", body: { careerGoal: "robotics engineer" } }, res);
+    expect(rank).toHaveBeenCalledTimes(2);
+    expect(rank.mock.calls[0][0].input).toContain("robotics engineer");
+    expect(JSON.parse(rank.mock.calls[1][0].input).careerGoal).toBe("robotics engineer");
+    expect(body).toEqual({ results: [], method: "AI" });
+  } finally {
+    if (key === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = key;
+  }
 });

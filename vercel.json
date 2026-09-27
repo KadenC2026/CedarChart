@@ -12,6 +12,10 @@
     "api/network-recommendations.ts": {
       "includeFiles": "public/data/networkResources.json",
       "maxDuration": 30
+    },
+    "api/next-courses.ts": {
+      "includeFiles": "public/data/catalog.json",
+      "maxDuration": 30
     }
   }
 }

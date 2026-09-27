@@ -12,6 +12,7 @@ export type NextCourseRecommendation = {
 const STOPWORDS = new Set([
   "and","the","for","with","from","into","this","that","using","course","introduction",
   "principles","topics","methods","applications","study","analysis","advanced","students",
+  "want","like","career","goal","interested","learn","work","would","become",
 ]);
 
 function tokens(text: string) {
@@ -40,6 +41,7 @@ export function recommendNextCourses({
   requirements,
   state,
   interests = "",
+  careerGoal = "",
   limit = 12,
 }: {
   current: RemoteCourse;
@@ -47,6 +49,7 @@ export function recommendNextCourses({
   requirements: Record<string, Requirement>;
   state: Pick<AppState, "completedCourseIds" | "priorCredits" | "plannedCourses" | "selectedRequirementId">;
   interests?: string;
+  careerGoal?: string;
   limit?: number;
 }): NextCourseRecommendation[] {
   const earned = earnedCourseIds(state);
@@ -59,11 +62,12 @@ export function recommendNextCourses({
   const requirementSet = new Set(selectedRequirement ? requirementSubjects(selectedRequirement) : []);
 
   const currentTokens = tokens([current.title, current.description ?? ""].join(" "));
-  const interestTokens = tokens(interests);
+  const interestTokens = tokens(`${interests} ${careerGoal}`);
   const currentDepartment = departmentOf(current.subject_id);
 
   return catalog
-    .filter((candidate) => !excluded.has(candidate.subject_id))
+    .filter((candidate) => !candidate.is_historical && !excluded.has(candidate.subject_id)
+      && !(candidate.equivalent_subjects ?? []).some((id) => excluded.has(id)))
     .map((candidate) => {
       let score = 0;
       const reasons: string[] = [];
@@ -79,10 +83,6 @@ export function recommendNextCourses({
         reasons.push("It appears in your selected major/minor requirements.");
       }
 
-      if (departmentOf(candidate.subject_id) === currentDepartment) {
-        score += 12;
-        reasons.push("It continues within the same department.");
-      }
 
       const candidateText = [candidate.title, candidate.description ?? ""].join(" ");
       const similarity = overlapScoreFromTokens(currentTokens, candidateText);
@@ -100,9 +100,14 @@ export function recommendNextCourses({
           if (candidateTokens.has(token)) interestOverlap += 1;
         }
         if (interestOverlap) {
-          score += Math.min(24, interestOverlap * 8);
+          score += Math.min(32, interestOverlap * 16);
           reasons.push("It matches your stated interests.");
         }
+      }
+
+      // Department membership alone is not evidence of a useful next course.
+      if (score >= 10 && departmentOf(candidate.subject_id) === currentDepartment) {
+        score += 6;
       }
 
       const relationship: NextCourseRecommendation["relationship"] =

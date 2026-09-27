@@ -898,7 +898,7 @@ export default function CourseMapPage() {
   const browsing = Boolean(normalized) || activeFilterCount(filters) > 0;
   const suggestions = targetFamilyId || !browsing
     ? []
-    : (aiSuggestions.length ? aiSuggestions : ranked.slice(0, 8));
+    : (suggestionSource === "ai" ? aiSuggestions : ranked.slice(0, 8));
 
   const target = targetFamilyId
     ? families.find((family) => family.id === targetFamilyId)
@@ -1089,6 +1089,12 @@ export default function CourseMapPage() {
         if (family) byFamily.set(family.id, family);
       }
       const choices = [...byFamily.values()].slice(0, 8);
+      if (!choices.length) {
+        setAiSuggestions([]);
+        setSuggestionSource("ai");
+        setMapSearchNote("No closely matching MIT subjects found. Try broadening your interests or goal.");
+        return;
+      }
       if (choices.length) {
         setAiSuggestions(choices);
         setSuggestionSource("ai");
@@ -1176,18 +1182,23 @@ export default function CourseMapPage() {
     });
   }
 
+  const nextCourseRequest = useRef(0);
+
   async function findLogicalNextCourses() {
     if (!selected || !data) return;
+    const requestId = ++nextCourseRequest.current;
+    const current = selected.members.find((member) => member.subject_id === selectedVariantId) ?? selected.primary;
     setNextCourseLoading(true);
     setNextCourseResults([]);
 
     const deterministic = recommendNextCourses({
-      current: selected.primary,
+      current,
       catalog,
       requirements: data.requirements,
       state,
       interests: state.interestQuery,
-      limit: 15,
+      careerGoal: state.careerGoal,
+      limit: 120,
     });
 
     const selectedRequirement = state.selectedRequirementId
@@ -1200,9 +1211,9 @@ export default function CourseMapPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           currentCourse: {
-            subjectId: selected.primary.subject_id,
-            title: selected.primary.title,
-            description: selected.primary.description,
+            subjectId: current.subject_id,
+            title: current.title,
+            description: current.description,
           },
           interests: state.interestQuery,
           careerGoal: state.careerGoal,
@@ -1230,24 +1241,20 @@ export default function CourseMapPage() {
         })
         .filter(Boolean) as Array<NextCourseRecommendation & { explanation?: string; method?: string }>;
 
-      const seen = new Set(ranked.map((item) => item.course.subject_id));
-      setNextCourseResults([
-        ...ranked,
-        ...deterministic
-          .filter((item) => !seen.has(item.course.subject_id))
-          .slice(0, Math.max(0, 8 - ranked.length)),
-      ]);
+      if (requestId === nextCourseRequest.current) setNextCourseResults(ranked.slice(0, 8));
     } catch {
-      setNextCourseResults(deterministic.slice(0, 8));
+      if (requestId === nextCourseRequest.current) setNextCourseResults(deterministic.slice(0, 8));
     } finally {
-      setNextCourseLoading(false);
+      if (requestId === nextCourseRequest.current) setNextCourseLoading(false);
     }
   }
 
   useEffect(() => {
     if (!selected || !data) return;
     void findLogicalNextCourses();
-  }, [selectedFamilyId, state.interestQuery, state.careerGoal, state.selectedRequirementId]);
+    return () => { nextCourseRequest.current += 1; };
+  }, [selectedFamilyId, selectedVariantId, state.interestQuery, state.careerGoal, state.selectedRequirementId,
+    state.completedCourseIds, state.priorCredits, state.plannedCourses]);
 
   function toggleRecommendationSchedule(course: RemoteCourse) {
     const planned = state.plannedCourses.find(

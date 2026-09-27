@@ -71,3 +71,23 @@ describe("recommendNextCourses", () => {
     expect(results[0]?.relationship).toBe("required-next");
   });
 });
+
+
+describe("next-course relevance", () => {
+  const state = { completedCourseIds: [], priorCredits: [], plannedCourses: [], selectedRequirementId: null };
+  it("rejects department-only matches and retired courses", () => {
+    const current = c("6.1", "Robotics", "robots control");
+    const results = recommendNextCourses({ current, state, requirements: {}, catalog: [
+      current, c("6.2", "Unrelated Subject", "unrelated material"),
+      { ...c("6.3", "Robotics", "robots control", "6.1"), is_historical: true },
+    ] });
+    expect(results).toEqual([]);
+  });
+  it("includes career-relevant courses outside the current department", () => {
+    const current = c("18.1", "Linear Algebra", "matrices");
+    const results = recommendNextCourses({ current, state, requirements: {}, careerGoal: "robotics", catalog: [
+      current, c("6.2", "Robotics", "autonomous control"),
+    ] });
+    expect(results.map((item) => item.course.subject_id)).toEqual(["6.2"]);
+  });
+});
