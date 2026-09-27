@@ -39,6 +39,20 @@ describe("AI recommendation retrieval", () => {
     expect(retrieveCandidates(catalog, "algorithms").map((course) => course.subject_id)).not.toContain("6.006");
   });
 
+  it("keeps a translated food query grounded in courses about food", () => {
+    const courses: CatalogCourse[] = [
+      { subject_id: "21G.045", title: "Global Chinese Food", description: "History of Chinese food." },
+      { subject_id: "16.C21A", title: "Numerical Methods", description: "Diffusion in physical systems." },
+    ];
+    const candidates = retrieveCandidates(courses, "I like Chinese food", ["diffusion"]);
+    expect(candidates[0]?.subject_id).toBe("21G.045");
+    const results = groundedAiResults([
+      { subjectId: "16.C21A", relevanceExplanation: "Food cooks through diffusion." },
+      { subjectId: "21G.045", relevanceExplanation: "Covers Chinese food history." },
+    ], candidates, 5, "Chinese food");
+    expect(results.map((result) => result.courseId)).toEqual(["mit:21G.045"]);
+  });
+
   it("accepts only unique model results from the supplied candidates", () => {
     const results = groundedAiResults([
       { subjectId: "made-up", relevanceExplanation: "Invented" },
