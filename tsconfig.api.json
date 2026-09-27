@@ -10,7 +10,8 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "types": ["node"],
-    "noEmit": true
+    "noEmit": true,
+    "allowImportingTsExtensions": true
   },
   "include": ["api", "src/domain/types.ts", "src/domain/vectorSearch.ts", "src/domain/networkRecommendations.ts"]
 }

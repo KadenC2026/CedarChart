@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { rankByEmbedding } from "../src/domain/vectorSearch";
+import { rankByEmbedding } from "../src/domain/vectorSearch.ts";
 
 type Candidate = {
   subjectId: string;
@@ -122,6 +122,7 @@ export default async function handler(req: any, res: any) {
     const response = await client.responses.create({
       model: process.env.OPENAI_MODEL || "gpt-5-mini",
       store: false,
+      reasoning: { effort: "low" },
       text: {
         format: {
           type: "json_schema",
@@ -130,7 +131,7 @@ export default async function handler(req: any, res: any) {
           schema: rankingSchema,
         },
       },
-      max_output_tokens: 1200,
+      max_output_tokens: 2_500,
       input: [
         {
           role: "system",
@@ -150,6 +151,9 @@ export default async function handler(req: any, res: any) {
       ],
     });
 
+    if (response.status !== "completed" || !response.output_text) {
+      throw new Error(`AI response ${response.status}: ${response.incomplete_details?.reason ?? "no output text"}`);
+    }
     const parsed = JSON.parse(response.output_text);
     const results = Array.isArray(parsed.results)
       ? parsed.results
