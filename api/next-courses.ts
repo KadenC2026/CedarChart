@@ -1,5 +1,4 @@
 import OpenAI from "openai";
-import { rankByEmbedding } from "../src/domain/vectorSearch.ts";
 
 type Candidate = {
   subjectId: string;
@@ -29,6 +28,19 @@ const rankingSchema = {
   required: ["results"],
   additionalProperties: false,
 } as const;
+
+function similarity(a: number[], b: number[]) {
+  if (!a.length || a.length !== b.length) return 0;
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  return normA && normB ? dot / Math.sqrt(normA * normB) : 0;
+}
 
 function candidateText(candidate: Candidate) {
   return [
@@ -99,13 +111,12 @@ export default async function handler(req: any, res: any) {
     const queryEmbedding = embeddings.data[0]?.embedding;
     if (!queryEmbedding) throw new Error("Missing query embedding");
 
-    const semantic = rankByEmbedding(
-      queryEmbedding,
-      safeCandidates.map((candidate, index) => ({
+    const semantic = safeCandidates
+      .map((candidate, index) => ({
         item: candidate,
-        embedding: embeddings.data[index + 1]?.embedding ?? [],
-      })),
-    );
+        similarity: similarity(queryEmbedding, embeddings.data[index + 1]?.embedding ?? []),
+      }))
+      .sort((a, b) => b.similarity - a.similarity);
 
     // Blend deterministic academic structure with semantic relevance.
     const blended = semantic
