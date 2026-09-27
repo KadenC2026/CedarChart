@@ -89,6 +89,11 @@ describe("course search ranking", () => {
   it("ignores courses that match nothing", () => {
     expect(searchScore(algorithms, "quantum")).toBe(0);
   });
+
+  it("does not match every course ID for a query without Latin characters", () => {
+    expect(searchScore(algorithms, "我喜欢中国菜")).toBe(0);
+    expect(searchCourses(catalog, { query: "我喜欢中国菜", filters: emptyFilters })).toEqual([]);
+  });
 });
 
 describe("course filters", () => {

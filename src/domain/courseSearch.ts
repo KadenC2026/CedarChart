@@ -119,9 +119,10 @@ export function searchScore(
   const id = course.subject_id.toLowerCase();
   const title = course.title.toLowerCase();
   const description = (course.description ?? "").toLowerCase();
+  const compactQuery = condensed(query);
 
-  if (id === query || condensed(id) === condensed(query)) return 1000;
-  if (id.startsWith(query) || condensed(id).startsWith(condensed(query))) return 900;
+  if (id === query || (compactQuery && condensed(id) === compactQuery)) return 1000;
+  if (id.startsWith(query) || (compactQuery && condensed(id).startsWith(compactQuery))) return 900;
   if (id.includes(query)) return 800;
   if (title === query) return 700;
 
