@@ -10,6 +10,26 @@ type Candidate = {
   deterministicReasons: string[];
 };
 
+const rankingSchema = {
+  type: "object",
+  properties: {
+    results: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          subjectId: { type: "string" },
+          explanation: { type: "string" },
+        },
+        required: ["subjectId", "explanation"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["results"],
+  additionalProperties: false,
+} as const;
+
 function candidateText(candidate: Candidate) {
   return [
     candidate.subjectId,
@@ -100,12 +120,22 @@ export default async function handler(req: any, res: any) {
     const allowedIds = new Set(blended.map((candidate) => candidate.subjectId));
 
     const response = await client.responses.create({
-      model: process.env.OPENAI_MODEL || "gpt-5.6-luna",
+      model: process.env.OPENAI_MODEL || "gpt-5-mini",
+      store: false,
+      text: {
+        format: {
+          type: "json_schema",
+          name: "next_course_recommendations",
+          strict: true,
+          schema: rankingSchema,
+        },
+      },
+      max_output_tokens: 1200,
       input: [
         {
           role: "system",
           content:
-            "Rank a pre-vetted list of real MIT courses. Only return supplied subjectIds. Do not invent prerequisites, requirements, or career guarantees. Explicitly distinguish a direct prerequisite-based continuation from a broader recommendation. Return JSON only: {results:[{subjectId,explanation}]}. Use the current course, academic program, interests, career goal, semantic similarity, and deterministic academic reasons.",
+            "Rank a pre-vetted list of real MIT courses. Only return supplied subjectIds. Do not invent prerequisites, requirements, or career guarantees. Explicitly distinguish a direct prerequisite-based continuation from a broader recommendation. Use the current course, academic program, interests, career goal, semantic similarity, and deterministic academic reasons.",
         },
         {
           role: "user",

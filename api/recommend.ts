@@ -214,15 +214,16 @@ export default async function handler(req: any, res: any) {
   }
 
   const deterministicCandidates = retrieveCandidates(catalog, searchText, [], CANDIDATE_LIMIT);
-  const fallback = () => res.status(200).json({
+  const fallback = (reason: "api-key-missing" | "ai-unavailable" | "no-matches") => res.status(200).json({
     results: keywordResults(deterministicCandidates),
     method: "keyword",
+    reason,
   });
 
-  if (!process.env.OPENAI_API_KEY) return fallback();
+  if (!process.env.OPENAI_API_KEY) return fallback("api-key-missing");
 
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  const model = process.env.OPENAI_MODEL || "gpt-5.6-luna";
+  const model = process.env.OPENAI_MODEL || "gpt-5-mini";
 
   try {
     const expansionResponse = await client.responses.create({
@@ -239,7 +240,7 @@ export default async function handler(req: any, res: any) {
           schema: expansionSchema,
         },
       },
-      max_output_tokens: 300,
+      max_output_tokens: 800,
     });
 
     const expansion = parseOutput<{ intentSummary: string; searchTerms: string[] }>(
@@ -251,7 +252,7 @@ export default async function handler(req: any, res: any) {
       Array.isArray(expansion.searchTerms) ? expansion.searchTerms : [],
       CANDIDATE_LIMIT,
     );
-    if (!candidates.length) return fallback();
+    if (!candidates.length) return fallback("no-matches");
 
     const rankingResponse = await client.responses.create({
       model,
@@ -276,18 +277,18 @@ export default async function handler(req: any, res: any) {
           schema: rankingSchema,
         },
       },
-      max_output_tokens: 900,
+      max_output_tokens: 1_400,
     });
 
     const ranked = parseOutput<{
       results: Array<{ subjectId?: unknown; relevanceExplanation?: unknown }>;
     }>(rankingResponse.output_text);
     const results = groundedAiResults(Array.isArray(ranked.results) ? ranked.results : [], candidates);
-    if (!results.length) return fallback();
+    if (!results.length) return fallback("no-matches");
 
     return res.status(200).json({ results, method: "AI" });
   } catch (error) {
     console.error("AI course recommendation failed; using keyword fallback", error);
-    return fallback();
+    return fallback("ai-unavailable");
   }
 }

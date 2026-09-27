@@ -89,7 +89,11 @@ export default function DiscoveryPage() {
         dispatch({ type: "SET_RECOMMENDATIONS", results: visible });
         const keywordOnly = visible.every((result) => result.recommendationMethod === "keyword");
         setMethodNote(keywordOnly
-          ? "Showing deterministic matches from the imported MIT catalog."
+          ? data.reason === "api-key-missing"
+            ? "AI is not configured on this server. Showing catalog matches."
+            : data.reason === "ai-unavailable"
+              ? "AI could not respond. Showing catalog matches."
+              : "Showing deterministic matches from the imported MIT catalog."
           : "AI recommendations grounded in the imported MIT catalog.");
         return;
       }

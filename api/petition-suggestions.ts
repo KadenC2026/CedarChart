@@ -179,7 +179,7 @@ export default async function handler(req: any, res: any) {
   try {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const response = await client.responses.create({
-      model: process.env.OPENAI_MODEL || "gpt-5.6-luna",
+      model: process.env.OPENAI_MODEL || "gpt-5-mini",
       store: false,
       instructions:
         "Identify MIT subjects the student could discuss with an instructor or academic advisor because their stated experience may overlap with expected preparation. Select only supplied subjectIds. Use only the student's statement and supplied catalog records. Never say a prerequisite is waived, that a petition will be approved, or that the student has earned credit. Frame every result as a question for an instructor or advisor. Return only the requested structured data.",
