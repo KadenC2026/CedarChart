@@ -75,7 +75,7 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: "currentCourse and candidates are required" });
   }
 
-  const safeCandidates = candidates.slice(0, 20);
+  const safeCandidates = candidates.slice(0, 60);
   const fallback = safeCandidates.slice(0, 8).map((candidate) => ({
     subjectId: candidate.subjectId,
     explanation:
@@ -123,10 +123,10 @@ export default async function handler(req: any, res: any) {
       .map(({ item, similarity }) => ({
         ...item,
         semanticSimilarity: similarity,
-        blendedScore: item.deterministicScore * 0.55 + Math.max(0, similarity) * 100 * 0.45,
+        blendedScore: item.deterministicScore * 0.35 + Math.max(0, similarity) * 100 * 0.65,
       }))
       .sort((a, b) => b.blendedScore - a.blendedScore)
-      .slice(0, 12);
+      .slice(0, 20);
 
     const allowedIds = new Set(blended.map((candidate) => candidate.subjectId));
 
@@ -147,7 +147,7 @@ export default async function handler(req: any, res: any) {
         {
           role: "system",
           content:
-            "Rank a pre-vetted list of real MIT courses. Only return supplied subjectIds. Do not invent prerequisites, requirements, or career guarantees. Explicitly distinguish a direct prerequisite-based continuation from a broader recommendation. Use the current course, academic program, interests, career goal, semantic similarity, and deterministic academic reasons.",
+            "Rank the supplied real MIT courses by how closely they fit the student's current course plus any stated interests/career goal. Semantic similarity should be the primary signal for broader recommendations, while explicit prerequisite continuations and program requirements remain strong academic signals. Only return supplied subjectIds. Do not invent prerequisites, requirements, course content, or career guarantees. Explicitly distinguish a direct prerequisite-based continuation from a broader recommendation.",
         },
         {
           role: "user",
