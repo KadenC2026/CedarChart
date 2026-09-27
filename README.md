@@ -44,9 +44,12 @@ Create `.env.local`:
 
 ```
 OPENAI_API_KEY=your_key_here
-OPENAI_MODEL=gpt-5.6-luna
+OPENAI_MODEL=gpt-5-mini
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 ```
+
+Use `vercel dev` to run the serverless `/api/*` routes locally. `npm run dev`
+starts only the Vite frontend, so AI requests to `/api/*` will fail there.
 
 The browser never receives the API key. Discovery interprets the student's interests and optional career goal into academic search concepts, retrieves a small candidate set from the checked-in catalog, and asks the model to rank only those candidates. Returned course IDs are validated against that candidate set, and supporting text always comes from the catalog. Logical next-course ranking also uses embeddings when AI is configured. If the API is unavailable, TrackMIT falls back to deterministic recommendations.
 
@@ -58,6 +61,7 @@ Recommended host: Vercel.
 - Build command: `npm run build`
 - Output directory: `dist`
 - Add `OPENAI_API_KEY` in Vercel Environment Variables. `OPENAI_MODEL` and `OPENAI_EMBEDDING_MODEL` are optional.
+- If `OPENAI_MODEL` is already set to `gpt-5.6-luna`, change it to `gpt-5-mini` or remove it so the app uses the default. Set the key for the deployment environment you use (Preview or Production).
 - Redeploy after adding the environment variable. `vercel.json` bundles the checked-in catalog with the recommendation function.
 
 ## Account setup

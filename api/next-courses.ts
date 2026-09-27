@@ -1,5 +1,4 @@
 import OpenAI from "openai";
-import { rankByEmbedding } from "../src/domain/vectorSearch";
 
 type Candidate = {
   subjectId: string;
@@ -9,6 +8,39 @@ type Candidate = {
   deterministicScore: number;
   deterministicReasons: string[];
 };
+
+const rankingSchema = {
+  type: "object",
+  properties: {
+    results: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          subjectId: { type: "string" },
+          explanation: { type: "string" },
+        },
+        required: ["subjectId", "explanation"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["results"],
+  additionalProperties: false,
+} as const;
+
+function similarity(a: number[], b: number[]) {
+  if (!a.length || a.length !== b.length) return 0;
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  return normA && normB ? dot / Math.sqrt(normA * normB) : 0;
+}
 
 function candidateText(candidate: Candidate) {
   return [
@@ -79,13 +111,12 @@ export default async function handler(req: any, res: any) {
     const queryEmbedding = embeddings.data[0]?.embedding;
     if (!queryEmbedding) throw new Error("Missing query embedding");
 
-    const semantic = rankByEmbedding(
-      queryEmbedding,
-      safeCandidates.map((candidate, index) => ({
+    const semantic = safeCandidates
+      .map((candidate, index) => ({
         item: candidate,
-        embedding: embeddings.data[index + 1]?.embedding ?? [],
-      })),
-    );
+        similarity: similarity(queryEmbedding, embeddings.data[index + 1]?.embedding ?? []),
+      }))
+      .sort((a, b) => b.similarity - a.similarity);
 
     // Blend deterministic academic structure with semantic relevance.
     const blended = semantic
@@ -100,12 +131,23 @@ export default async function handler(req: any, res: any) {
     const allowedIds = new Set(blended.map((candidate) => candidate.subjectId));
 
     const response = await client.responses.create({
-      model: process.env.OPENAI_MODEL || "gpt-5.6-luna",
+      model: process.env.OPENAI_MODEL || "gpt-5-mini",
+      store: false,
+      reasoning: { effort: "low" },
+      text: {
+        format: {
+          type: "json_schema",
+          name: "next_course_recommendations",
+          strict: true,
+          schema: rankingSchema,
+        },
+      },
+      max_output_tokens: 2_500,
       input: [
         {
           role: "system",
           content:
-            "Rank a pre-vetted list of real MIT courses. Only return supplied subjectIds. Do not invent prerequisites, requirements, or career guarantees. Explicitly distinguish a direct prerequisite-based continuation from a broader recommendation. Return JSON only: {results:[{subjectId,explanation}]}. Use the current course, academic program, interests, career goal, semantic similarity, and deterministic academic reasons.",
+            "Rank a pre-vetted list of real MIT courses. Only return supplied subjectIds. Do not invent prerequisites, requirements, or career guarantees. Explicitly distinguish a direct prerequisite-based continuation from a broader recommendation. Use the current course, academic program, interests, career goal, semantic similarity, and deterministic academic reasons.",
         },
         {
           role: "user",
@@ -120,6 +162,9 @@ export default async function handler(req: any, res: any) {
       ],
     });
 
+    if (response.status !== "completed" || !response.output_text) {
+      throw new Error(`AI response ${response.status}: ${response.incomplete_details?.reason ?? "no output text"}`);
+    }
     const parsed = JSON.parse(response.output_text);
     const results = Array.isArray(parsed.results)
       ? parsed.results

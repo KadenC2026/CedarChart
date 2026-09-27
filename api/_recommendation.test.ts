@@ -62,7 +62,7 @@ describe("AI recommendation retrieval", () => {
     delete process.env.OPENAI_API_KEY;
 
     let statusCode = 0;
-    let body: { method?: string; results?: Array<{ courseId: string }> } = {};
+    let body: { method?: string; reason?: string; results?: Array<{ courseId: string }> } = {};
     const response = {
       status(code: number) {
         statusCode = code;
@@ -83,6 +83,7 @@ describe("AI recommendation retrieval", () => {
 
     expect(statusCode).toBe(200);
     expect(body.method).toBe("keyword");
+    expect(body.reason).toBe("api-key-missing");
     expect(body.results?.length).toBeGreaterThan(0);
     expect(body.results?.every((result) => result.courseId.startsWith("mit:"))).toBe(true);
   });
