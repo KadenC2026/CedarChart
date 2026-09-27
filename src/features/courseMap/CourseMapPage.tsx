@@ -1187,7 +1187,8 @@ export default function CourseMapPage() {
       requirements: data.requirements,
       state,
       interests: state.interestQuery,
-      limit: 15,
+      careerGoal: state.careerGoal,
+      limit: 60,
     });
 
     const selectedRequirement = state.selectedRequirementId

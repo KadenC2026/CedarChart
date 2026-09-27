@@ -40,13 +40,15 @@ export function recommendNextCourses({
   requirements,
   state,
   interests = "",
-  limit = 12,
+  careerGoal = "",
+  limit = 60,
 }: {
   current: RemoteCourse;
   catalog: RemoteCourse[];
   requirements: Record<string, Requirement>;
   state: Pick<AppState, "completedCourseIds" | "priorCredits" | "plannedCourses" | "selectedRequirementId">;
   interests?: string;
+  careerGoal?: string;
   limit?: number;
 }): NextCourseRecommendation[] {
   const earned = earnedCourseIds(state);
@@ -59,7 +61,7 @@ export function recommendNextCourses({
   const requirementSet = new Set(selectedRequirement ? requirementSubjects(selectedRequirement) : []);
 
   const currentTokens = tokens([current.title, current.description ?? ""].join(" "));
-  const interestTokens = tokens(interests);
+  const profileTokens = tokens([interests, careerGoal].filter(Boolean).join(" "));
   const currentDepartment = departmentOf(current.subject_id);
 
   return catalog
@@ -93,15 +95,15 @@ export function recommendNextCourses({
         }
       }
 
-      if (interestTokens.size) {
+      if (profileTokens.size) {
         const candidateTokens = tokens(candidateText);
-        let interestOverlap = 0;
-        for (const token of interestTokens) {
-          if (candidateTokens.has(token)) interestOverlap += 1;
+        let profileOverlap = 0;
+        for (const token of profileTokens) {
+          if (candidateTokens.has(token)) profileOverlap += 1;
         }
-        if (interestOverlap) {
-          score += Math.min(24, interestOverlap * 8);
-          reasons.push("It matches your stated interests.");
+        if (profileOverlap) {
+          score += Math.min(30, profileOverlap * 10);
+          reasons.push("It matches your stated interests or career goal.");
         }
       }
 
@@ -114,7 +116,7 @@ export function recommendNextCourses({
 
       return { course: candidate, score, relationship, reasons };
     })
-    .filter((recommendation) => recommendation.score >= 10)
+    .filter((recommendation) => recommendation.score > 0)
     .sort((a, b) => b.score - a.score || a.course.subject_id.localeCompare(b.course.subject_id, undefined, { numeric: true }))
     .slice(0, limit);
 }
