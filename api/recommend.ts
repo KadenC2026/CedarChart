@@ -16,12 +16,15 @@ const STOP_WORDS = new Set([
   "build",
   "course",
   "courses",
+  "enjoy",
   "from",
   "help",
+  "interested",
   "into",
   "learn",
   "like",
   "make",
+  "studying",
   "that",
   "the",
   "their",
@@ -110,6 +113,11 @@ export function keywordResults(courses: CatalogCourse[], limit = 5) {
     supportingCatalogText: catalogExcerpt(course),
     recommendationMethod: "keyword" as const,
   }));
+}
+
+/** Use the model's translation only when the course text supports the translated topic. */
+export function translatedKeywordResults(courses: CatalogCourse[], englishQuery: string) {
+  return keywordResults(courses.filter((course) => topicMatches(course, englishQuery)));
 }
 
 export function groundedAiResults(
@@ -277,6 +285,12 @@ export default async function handler(req: any, res: any) {
       .slice(0, CANDIDATE_LIMIT);
     if (!candidates.length) return fallback("no-matches");
 
+    const translatedFallback = () => res.status(200).json({
+      results: translatedKeywordResults(candidates, expansion.englishQuery),
+      method: "keyword",
+      reason: "no-matches",
+    });
+
     const rankingResponse = await client.responses.create({
       model,
       store: false,
@@ -313,9 +327,9 @@ export default async function handler(req: any, res: any) {
       Array.isArray(ranked.results) ? ranked.results : [],
       candidates,
       5,
-      tokens(searchText).length ? "" : expansion.coreTopic,
+      tokens(searchText).length ? "" : expansion.englishQuery,
     );
-    if (!results.length) return fallback("no-matches");
+    if (!results.length) return translatedFallback();
 
     return res.status(200).json({ results, method: "AI" });
   } catch (error) {

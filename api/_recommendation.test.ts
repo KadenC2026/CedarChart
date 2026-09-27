@@ -3,6 +3,7 @@ import handler, {
   groundedAiResults,
   keywordResults,
   retrieveCandidates,
+  translatedKeywordResults,
   type CatalogCourse,
 } from "./recommend";
 
@@ -51,6 +52,8 @@ describe("AI recommendation retrieval", () => {
       { subjectId: "21G.045", relevanceExplanation: "Covers Chinese food history." },
     ], candidates, 5, "Chinese food");
     expect(results.map((result) => result.courseId)).toEqual(["mit:21G.045"]);
+    expect(translatedKeywordResults(candidates, "I like Chinese food").map((result) => result.courseId))
+      .toEqual(["mit:21G.045"]);
   });
 
   it("accepts only unique model results from the supplied candidates", () => {
