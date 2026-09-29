@@ -72,7 +72,7 @@ export default function PlannerPage() {
     const subjectId = localId(courseId);
     const id = "mit:" + subjectId;
     dispatch({ type: "OPEN_PATHWAY", courseId: id });
-    navigate("/?course=" + encodeURIComponent(subjectId));
+    navigate("/course/" + encodeURIComponent(id));
   }
 
   async function runAiSearch(event: FormEvent) {
