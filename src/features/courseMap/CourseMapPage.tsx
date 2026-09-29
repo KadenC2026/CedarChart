@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   BaseEdge,
   Background,
@@ -961,8 +961,6 @@ export default function CourseMapPage() {
     () => buildCourseFamilies(catalog),
     [catalog],
   );
-  const [searchParams, setSearchParams] = useSearchParams();
-  const requestedCourseId = localId(searchParams.get("course") ?? "");
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<CourseFilters>(emptyFilters);
   const [targetFamilyId, setTargetFamilyId] = useState<string | null>(null);
@@ -976,24 +974,6 @@ export default function CourseMapPage() {
   const [aiSuggestions, setAiSuggestions] = useState<CourseFamily[]>([]);
   const [suggestionSource, setSuggestionSource] = useState<"ai" | "catalog">("catalog");
   const normalized = query.trim().toLowerCase();
-
-  useEffect(() => {
-    if (!requestedCourseId || !families.length) return;
-    const requestedFamily = familyByCourseId.get(requestedCourseId);
-    if (!requestedFamily || targetFamilyId === requestedFamily.id) return;
-
-    setQuery(requestedFamily.label);
-    setTargetFamilyId(requestedFamily.id);
-    setSelectedFamilyId(requestedFamily.id);
-    setNextCourseResults([]);
-    setAiSuggestions([]);
-    setMapSearchNote(null);
-  }, [
-    requestedCourseId,
-    families,
-    familyByCourseId,
-    targetFamilyId,
-  ]);
 
   const departments = useMemo(() => departmentOptions(catalog), [catalog]);
 
@@ -1158,10 +1138,6 @@ export default function CourseMapPage() {
     setNextCourseResults([]);
     setAiSuggestions([]);
     setMapSearchNote(null);
-
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.set("course", family.primary.subject_id);
-    setSearchParams(nextParams, { replace: true });
   }
 
   function updateMapSearchQuery(value: string) {
