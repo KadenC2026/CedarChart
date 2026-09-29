@@ -1102,11 +1102,17 @@ export default function CourseMapPage() {
     return [...byId.values()];
   }, [creditedCourseIds, hiddenMapCourseIdSet, familyByCourseId]);
   const graphTargets = useMemo(() => {
+    // Once a student searches or clicks a course, focus the graph on that one
+    // destination. Planned/credited courses remain visible when they intersect
+    // its prerequisite tree and are still used to rank preferred paths, but
+    // they no longer become competing roots that can collapse an OR choice to
+    // a single branch.
+    if (target) return [target];
+
     const roots = [...plannedMapFamilies];
     for (const family of creditedMapFamilies) {
       if (!roots.some((root) => root.id === family.id)) roots.push(family);
     }
-    if (target && !roots.some((family) => family.id === target.id)) roots.push(target);
     return roots;
   }, [plannedMapFamilies, creditedMapFamilies, target]);
   const hiddenMappedCourses = useMemo(
@@ -1542,10 +1548,20 @@ export default function CourseMapPage() {
             const optionElement = (event.target as HTMLElement).closest<HTMLElement>("[data-family-id]");
             const optionFamilyId = optionElement?.dataset.familyId;
             if (optionFamilyId) {
-              setSelectedFamilyId(optionFamilyId);
+              const optionFamily =
+                graph.familyByNodeId.get(optionFamilyId) ??
+                families.find((family) => family.id === optionFamilyId);
+              if (optionFamily) chooseFamily(optionFamily);
               return;
             }
-            setSelectedFamilyId(graph.familyByNodeId.get(node.id)?.id ?? null);
+            const clickedFamily = graph.familyByNodeId.get(node.id);
+            if (clickedFamily) {
+              // Clicking any course re-roots the map at that course so its own
+              // two best prerequisite pathways are generated immediately.
+              chooseFamily(clickedFamily);
+              return;
+            }
+            setSelectedFamilyId(null);
           }}
         >
           <Background gap={28} />
@@ -1559,7 +1575,7 @@ export default function CourseMapPage() {
           <div>
             {plannedMapFamilies.map((family) => (
               <span className="course-map-pinned-course" key={family.id}>
-                <button onClick={() => setSelectedFamilyId(family.id)}>{family.label}</button>
+                <button onClick={() => chooseFamily(family)}>{family.label}</button>
                 <button onClick={() => setFamilyMapVisibility(family, false)} aria-label={`Hide ${family.label} from map`}>×</button>
               </span>
             ))}
@@ -1567,7 +1583,7 @@ export default function CourseMapPage() {
               .filter((family) => !plannedMapFamilies.some((planned) => planned.id === family.id))
               .map((family) => (
                 <span className="course-map-pinned-course course-map-pinned-credit" key={family.id}>
-                  <button onClick={() => setSelectedFamilyId(family.id)}>{family.label} · credit</button>
+                  <button onClick={() => chooseFamily(family)}>{family.label} · credit</button>
                   <button onClick={() => setFamilyMapVisibility(family, false)} aria-label={`Hide ${family.label} from map`}>×</button>
                 </span>
               ))}
