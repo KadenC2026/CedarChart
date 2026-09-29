@@ -982,7 +982,7 @@ export default function CourseMapPage() {
     [families, query, filters],
   );
   const browsing = Boolean(normalized) || activeFilterCount(filters) > 0;
-  const suggestions = targetFamilyId || !browsing
+  const suggestions = targetFamilyId || !browsing || mapSearchLoading
     ? []
     : (aiSuggestions.length ? aiSuggestions : ranked.slice(0, 8));
 
