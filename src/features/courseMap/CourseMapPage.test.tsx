@@ -295,7 +295,7 @@ describe("course map forest layout", () => {
     expect(positions.get("1.004")!.y).toBeLessThan(positions.get("1.003")!.y);
   });
 
-  it("groups OR prerequisites inside one choice container", () => {
+  it("draws two recommended OR routes directly into the destination", () => {
     const catalog = [
       course("1.001", "Option A"),
       course("1.002", "Option B"),
@@ -304,18 +304,13 @@ describe("course map forest layout", () => {
     const { families } = buildCourseFamilies(catalog);
     const target = families.find((family) => family.id === "1.003")!;
     const graph = buildPrerequisiteForest([target], families);
-    const [[choiceId, choice]] = [...graph.logicByNodeId.entries()];
 
-    expect(choice.kind).toBe("any");
-    expect(choice.optionFamilies.map((family) => family.id)).toEqual(["1.001", "1.002"]);
+    expect(graph.logicByNodeId.size).toBe(0);
     expect(graph.edges.map((edge) => `${edge.source}->${edge.target}`))
       .toEqual(expect.arrayContaining([
-        "1.001->" + choiceId,
-        "1.002->" + choiceId,
-        `${choiceId}->1.003`,
+        "1.001->1.003",
+        "1.002->1.003",
       ]));
-    expect(graph.edges.find((edge) => edge.source === choiceId)?.markerEnd)
-      .toBeDefined();
   });
 
   it("uses a direct prerequisite node when only one catalog course is visible in an OR", () => {
@@ -331,52 +326,32 @@ describe("course map forest layout", () => {
     expect(graph.edges.map((edge) => `${edge.source}->${edge.target}`)).toContain("1.001->1.003");
   });
 
-  it("replaces a satisfied OR container with the selected prerequisite subtree", () => {
+  it("prefers the planned OR route but still keeps a second destination route", () => {
     const catalog = [
       course("1.000", "Foundation"),
       course("1.001", "Option A", "1.000"),
-      course("1.002", "Option B"),
+      course("2.000", "Other foundation"),
+      course("1.002", "Option B", "2.000"),
       course("1.003", "Destination", "1.001/1.002"),
     ];
     const { families } = buildCourseFamilies(catalog);
-    const selected = families.filter((family) => ["1.001", "1.003"].includes(family.id));
-    const graph = buildPrerequisiteForest(selected, families);
+    const target = families.find((family) => family.id === "1.003")!;
+    const graph = buildPrerequisiteForest(
+      [target],
+      families,
+      new Map([["1.001", 1]]),
+      new Map(),
+      new Set(),
+      new Set(),
+      new Set(),
+      new Set(["1.001"]),
+    );
 
     expect(graph.logicByNodeId.size).toBe(0);
-    expect(graph.familyByNodeId.has("1.000")).toBe(true);
     expect(graph.familyByNodeId.has("1.001")).toBe(true);
-    expect(graph.familyByNodeId.has("1.002")).toBe(false);
-    expect(graph.replacementPositionSourceByNodeId.get("1.001")).toContain("logic:1.003");
-    expect(graph.edges.map((edge) => `${edge.source}->${edge.target}`)).toEqual(expect.arrayContaining([
-      "1.000->1.001",
-      "1.001->1.003",
-    ]));
-  });
-
-  it("reflows existing nodes when an OR replacement reveals a deeper subtree", () => {
-    const catalog = [
-      course("1.000", "Foundation"),
-      course("1.001", "Option A", "1.000"),
-      course("1.002", "Option B"),
-      course("1.004", "Direct requirement"),
-      course("1.003", "Destination", "1.004, (1.001/1.002)"),
-    ];
-    const { families } = buildCourseFamilies(catalog);
-    const destination = families.find((family) => family.id === "1.003")!;
-    const unresolved = buildPrerequisiteForest([destination], families);
-    const selected = families.filter((family) => ["1.001", "1.003"].includes(family.id));
-    const resolved = buildPrerequisiteForest(selected, families);
-    const choiceId = [...unresolved.logicByNodeId.keys()][0];
-    const choicePosition = unresolved.nodes.find((node) => node.id === choiceId)!.position;
-    const foundationPosition = resolved.nodes.find((node) => node.id === "1.000")!.position;
-    const staleNodes = unresolved.nodes.map((node) =>
-      node.id === "1.004" ? { ...node, position: foundationPosition } : node,
-    );
-    const reconciled = reconcileGraphNodes(resolved, staleNodes, new Map());
-    const byId = new Map(reconciled.map((node) => [node.id, node.position]));
-
-    expect(byId.get("1.001")).toEqual(choicePosition);
-    expect(byId.get("1.004")).not.toEqual(byId.get("1.000"));
+    expect(graph.familyByNodeId.has("1.002")).toBe(true);
+    expect(graph.familyByNodeId.has("1.000")).toBe(true);
+    expect(graph.familyByNodeId.has("2.000")).toBe(true);
   });
 
   it("reveals the full prerequisite chain from one selected course", () => {
