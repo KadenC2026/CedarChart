@@ -31,6 +31,32 @@ describe("search ranking over the imported catalog snapshot", () => {
     expect(results[0]?.subject_id).toBe("18.06");
   });
 
+
+  it("ranks Deep Learning first for a direct topic/title search", () => {
+    const results = searchCourses(catalog, {
+      query: "deep learning",
+      filters: emptyFilters,
+      limit: 5,
+    });
+    expect(results[0]?.subject_id).toBe("6.7960");
+  });
+
+  it("keeps exact multi-word titles ahead of description mentions", () => {
+    const linear = searchCourses(catalog, {
+      query: "linear algebra",
+      filters: emptyFilters,
+      limit: 5,
+    });
+    const deep = searchCourses(catalog, {
+      query: "deep learning",
+      filters: emptyFilters,
+      limit: 5,
+    });
+
+    expect(linear[0]?.title.toLowerCase()).toContain("linear algebra");
+    expect(deep[0]?.title.toLowerCase()).toContain("deep learning");
+  });
+
   it("narrows a topic search to one department when filtered", () => {
     const results = searchCourses(catalog, {
       query: "algorithms",

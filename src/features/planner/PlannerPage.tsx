@@ -11,6 +11,7 @@ import { useApp } from "../../state/AppContext";
 import { requestCourseRecommendations, type GroundedCourseRecommendation } from "../../domain/aiCourseSearch";
 import PetitionAdvisor from "./PetitionAdvisor";
 import { buildCourseFamilies } from "../../domain/courseFamilies";
+import { emptyFilters, searchCourses } from "../../domain/courseSearch";
 
 
 export default function PlannerPage() {
@@ -35,14 +36,19 @@ export default function PlannerPage() {
   const projected = selectedRequirement ? evaluateRequirement(selectedRequirement, new Set([...earned, ...planned]), catalogMap) : null;
 
   const matches = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) return catalog;
-    return catalog
-      .filter((course) =>
-        course.subject_id.toLowerCase().includes(normalized) ||
-        course.title.toLowerCase().includes(normalized) ||
-        (course.description ?? "").toLowerCase().includes(normalized),
-      );
+    const trimmed = query.trim();
+    if (!trimmed) {
+      return catalog.filter((course) => !course.is_historical);
+    }
+
+    // Use the same deterministic relevance ranking as the main Map search.
+    // Exact subject/title matches come first, then strong title matches, then
+    // description-only mentions. This makes ordinary keyword searches useful
+    // without requiring the AI-search button.
+    return searchCourses(catalog, {
+      query: trimmed,
+      filters: emptyFilters,
+    });
   }, [catalog, query]);
   const displayedMatches = aiMatches?.map((match) => match.course) ?? matches;
   const aiExplanationById = new Map(
