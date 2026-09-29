@@ -453,96 +453,44 @@ function buildPrerequisiteGraph(
       const branchFamilies = expression.children.map((child) =>
         familiesInExpression(child, families),
       );
-      const uniqueFamilies = new Map(
-        branchFamilies.flat().map((family) => [family.id, family]),
-      );
-
-      if (
-        branchFamilies.every((branch) => branch.length > 0) &&
-        uniqueFamilies.size === 1
-      ) {
-        const family = [...uniqueFamilies.values()][0];
-        if (family.id !== edgeTarget) {
-          discover(family);
-          addEdge(family.id, edgeTarget, !logicByNodeId.has(edgeTarget));
-          connectFamilyPrerequisites(family, depth + 1);
-        }
-        return;
-      }
-
-      const allOptions = [...uniqueFamilies.values()];
-      if (allOptions.length <= 1) {
-        const family = allOptions[0];
-        if (family && family.id !== edgeTarget) {
-          discover(family);
-          addEdge(family.id, edgeTarget, !logicByNodeId.has(edgeTarget));
-          connectFamilyPrerequisites(family, depth + 1);
-        }
-        return;
-      }
 
       const instructorPermissionChoiceId =
         `${ownerFamily.primary.subject_id}:${path}`;
       if (instructorPermissionChoiceIds.has(instructorPermissionChoiceId)) return;
 
-      const selectedBranchIndexes = branchFamilies
-        .map((branch, index) => ({
-          index,
-          selected: branch.some((family) => selectedFamilyIds.has(family.id)),
-        }))
-        .filter((entry) => entry.selected)
-        .map((entry) => entry.index);
-
-      if (selectedBranchIndexes.length > 0) {
-        selectedBranchIndexes.slice(0, maxAlternativePaths).forEach((index) => {
-          const child = expression.children[index];
-          const branch = branchFamilies[index];
-          branch.forEach((family) => {
-            replacementPositionSourceByNodeId.set(
-              family.id,
-              `logic:${edgeTarget}:${path}:${expression.type}`,
-            );
-          });
-          connectExpression(
-            child,
-            edgeTarget,
-            `${path}.${index}`,
-            false,
-            ownerFamily,
-            depth,
-          );
-        });
-        return;
-      }
+      // Do not render a ONE OF decision box. The course map is meant to show a
+      // small number of useful routes, not every catalog alternative. Rank the
+      // alternatives by how well they intersect the student's existing plan,
+      // then draw the recommended branches directly into the dependent course.
+      //
+      // The active destination may show two alternatives. Once we are walking
+      // backward through one of those routes, keep only the best continuation
+      // so nested ORs do not multiply into an unreadable tree.
+      const pathLimit = ownerFamily.id === target.id
+        ? maxAlternativePaths
+        : 1;
 
       const rankedBranchIndexes = expression.children
         .map((child, index) => ({
           index,
           score: preferenceScoreForExpression(child),
+          hasCourse: branchFamilies[index].length > 0,
         }))
+        .filter((entry) => entry.hasCourse)
         .sort((a, b) => b.score - a.score || a.index - b.index)
-        .slice(0, maxAlternativePaths)
+        .slice(0, pathLimit)
         .map((entry) => entry.index);
 
-      const logicId = `logic:${edgeTarget}:${path}:${expression.type}`;
-      logicByNodeId.set(logicId, {
-        kind: expression.type,
-        optionFamilies: allOptions,
-        instructorPermissionChoiceId,
-        instructorPermissionSelected: false,
-      });
-
-      rankedBranchIndexes.forEach((index) =>
+      rankedBranchIndexes.forEach((index) => {
         connectExpression(
           expression.children[index],
-          logicId,
+          edgeTarget,
           `${path}.${index}`,
-          false,
+          true,
           ownerFamily,
           depth,
-        ),
-      );
-      addEdge(logicId, edgeTarget, !logicByNodeId.has(edgeTarget));
+        );
+      });
       return;
     }
 
