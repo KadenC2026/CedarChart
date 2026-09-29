@@ -308,10 +308,14 @@ describe("course map forest layout", () => {
 
     expect(choice.kind).toBe("any");
     expect(choice.optionFamilies.map((family) => family.id)).toEqual(["1.001", "1.002"]);
-    expect(graph.edges.map((edge) => `${edge.source}->${edge.target}`)).toEqual([
-      `${choiceId}->1.003`,
-    ]);
-    expect(graph.edges.find((edge) => edge.source === choiceId)?.markerEnd).toBeDefined();
+    expect(graph.edges.map((edge) => `${edge.source}->${edge.target}`))
+      .toEqual(expect.arrayContaining([
+        "1.001->" + choiceId,
+        "1.002->" + choiceId,
+        `${choiceId}->1.003`,
+      ]));
+    expect(graph.edges.find((edge) => edge.source === choiceId)?.markerEnd)
+      .toBeDefined();
   });
 
   it("uses a direct prerequisite node when only one catalog course is visible in an OR", () => {
