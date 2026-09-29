@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import handler, {
+  careerIntentSearchTerms,
   groundedAiResults,
   keywordResults,
   retrieveCandidates,
+  retrieveExpandedCandidatePool,
   translatedKeywordResults,
   type CatalogCourse,
 } from "./recommend";
@@ -33,6 +35,72 @@ describe("AI recommendation retrieval", () => {
       ["robotics", "autonomous navigation", "motion planning"],
     );
     expect(results[0]?.subject_id).toBe("6.4200");
+  });
+
+
+  it("extracts stable skill areas from startup career prompts", () => {
+    expect(
+      careerIntentSearchTerms(
+        "I want to learn how to work at an AI startup",
+      ),
+    ).toEqual(expect.arrayContaining([
+      "artificial intelligence",
+      "machine learning",
+      "software engineering",
+      "entrepreneurship",
+    ]));
+  });
+
+  it("builds a diverse candidate pool for an AI startup goal", () => {
+    const startupCatalog: CatalogCourse[] = [
+      {
+        subject_id: "6.3900",
+        title: "Introduction to Machine Learning",
+        description: "Foundations of machine learning methods and models.",
+      },
+      {
+        subject_id: "6.1040",
+        title: "Software Design",
+        description: "Design and implementation of software systems.",
+      },
+      {
+        subject_id: "15.390",
+        title: "New Enterprises",
+        description: "Entrepreneurship and building new ventures.",
+      },
+      {
+        subject_id: "21H.001",
+        title: "History",
+        description: "Historical methods.",
+      },
+    ];
+
+    const candidates = retrieveExpandedCandidatePool(
+      startupCatalog,
+      "I want to learn how to work at Intelligence Cubed startup",
+      {
+        intentSummary: "Prepare for a technical role at an AI startup.",
+        englishQuery: "technical AI startup career",
+        coreTopic: "artificial intelligence",
+        searchTerms: [
+          "machine learning",
+          "software engineering",
+          "entrepreneurship",
+          "product development",
+          "algorithms",
+        ],
+      },
+      10,
+    );
+
+    expect(candidates.map((course) => course.subject_id))
+      .toEqual(expect.arrayContaining([
+        "6.3900",
+        "6.1040",
+        "15.390",
+      ]));
+    expect(candidates.map((course) => course.subject_id))
+      .not.toContain("21H.001");
   });
 
   it("preserves exact subject-number searches and excludes historical subjects", () => {
