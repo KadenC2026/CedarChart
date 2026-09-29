@@ -6,6 +6,8 @@ import { useCatalog } from "../../data/catalog";
 import { courseWebsiteFor } from "../../data/courseSites";
 import { earnedCourseIds, localId } from "../../domain/requirements";
 import { progressionGroups, referencesCourse } from "../../domain/progression";
+import { buildCourseFamilies } from "../../domain/courseFamilies";
+import { buildPrerequisiteForest } from "../courseMap/CourseMapPage";
 import { plannerTerms, termLabel } from "../../domain/terms";
 import { useApp } from "../../state/AppContext";
 
@@ -36,12 +38,79 @@ export default function PathwayPage() {
   function toggleGroup(id: string) {
     setExpanded(previous => { const next = new Set(previous); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   }
-  const prerequisiteCourses = useMemo(() => {
-    if (!target?.prerequisites) return [];
-    return catalog
-      .filter((course) => course.subject_id !== subjectId && referencesCourse(target.prerequisites, course))
-      .sort((a, b) => a.subject_id.localeCompare(b.subject_id));
-  }, [target, catalog, subjectId]);
+  const { families, familyByCourseId } = useMemo(
+    () => buildCourseFamilies(catalog),
+    [catalog],
+  );
+
+  const plannedTermByFamilyId = useMemo(() => {
+    const terms = new Map<string, number>();
+    for (const planned of state.plannedCourses) {
+      const family = familyByCourseId.get(localId(planned.courseId));
+      if (!family) continue;
+      const existing = terms.get(family.id);
+      if (existing == null || planned.term < existing) {
+        terms.set(family.id, planned.term);
+      }
+    }
+    return terms;
+  }, [state.plannedCourses, familyByCourseId]);
+
+  const creditLabelByFamilyId = useMemo(() => {
+    const labels = new Map<string, string>();
+    for (const credit of state.priorCredits) {
+      const family = familyByCourseId.get(localId(credit.courseId));
+      if (!family) continue;
+      labels.set(
+        family.id,
+        credit.source === "ase"
+          ? "Passed ASE · prerequisite satisfied"
+          : "Prior credit · prerequisite satisfied",
+      );
+    }
+    return labels;
+  }, [state.priorCredits, familyByCourseId]);
+
+  const completedFamilyIds = useMemo(
+    () =>
+      new Set(
+        state.completedCourseIds
+          .map((courseId) => familyByCourseId.get(localId(courseId))?.id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    [state.completedCourseIds, familyByCourseId],
+  );
+
+  const prerequisiteGraph = useMemo(() => {
+    if (!target) return null;
+    const targetFamily = familyByCourseId.get(target.subject_id);
+    if (!targetFamily) return null;
+
+    return buildPrerequisiteForest(
+      [targetFamily],
+      families,
+      plannedTermByFamilyId,
+      creditLabelByFamilyId,
+      new Set(state.instructorPermissionCourseIds),
+      new Set(state.instructorPermissionChoiceIds),
+      new Set(state.instructorPermissionPrerequisiteIds),
+      new Set([
+        ...plannedTermByFamilyId.keys(),
+        ...creditLabelByFamilyId.keys(),
+        ...completedFamilyIds,
+      ]),
+    );
+  }, [
+    target,
+    familyByCourseId,
+    families,
+    plannedTermByFamilyId,
+    creditLabelByFamilyId,
+    state.instructorPermissionCourseIds,
+    state.instructorPermissionChoiceIds,
+    state.instructorPermissionPrerequisiteIds,
+    completedFamilyIds,
+  ]);
 
   const downstreamCourses = useMemo(() => {
     return catalog
@@ -67,37 +136,141 @@ export default function PathwayPage() {
 
   const nodes: Node[] = [];
   const edges: Edge[] = [];
-  const addEdge = (source: string, target: string) => edges.push({ id: `${source}->${target}`, source, target, markerEnd: { type: MarkerType.ArrowClosed } });
-  const courseNode = (course: RemoteCourse, id: string, x: number, y: number, className: string): Node => ({
-    id, position: { x, y }, sourcePosition: Position.Right, targetPosition: Position.Left,
-    data: { courseId: course.subject_id, label: <div className="progression-node"><strong>{course.subject_id}</strong><span>{course.title}</span></div> },
+  const addEdge = (source: string, targetId: string) =>
+    edges.push({
+      id: `${source}->${targetId}`,
+      source,
+      target: targetId,
+      markerEnd: { type: MarkerType.ArrowClosed },
+    });
+
+  const courseNode = (
+    course: RemoteCourse,
+    id: string,
+    x: number,
+    y: number,
+    className: string,
+  ): Node => ({
+    id,
+    position: { x, y },
+    sourcePosition: Position.Right,
+    targetPosition: Position.Left,
+    data: {
+      courseId: course.subject_id,
+      label: (
+        <div className="progression-node">
+          <strong>{course.subject_id}</strong>
+          <span>{course.title}</span>
+        </div>
+      ),
+    },
     className: `progression-course ${className}`,
   });
+
   let row = 0;
-  const visibleGroups = expanded.size ? groups.filter(group => expanded.has(group.id)) : groups.slice(branchPage * 6, branchPage * 6 + 6);
+  const visibleGroups = expanded.size
+    ? groups.filter((group) => expanded.has(group.id))
+    : groups.slice(branchPage * 6, branchPage * 6 + 6);
+
   for (const group of visibleGroups) {
     const isExpanded = expanded.has(group.id);
-    const height = isExpanded ? Math.max(140, group.courses.length * 110) : 150;
+    const height = isExpanded
+      ? Math.max(140, group.courses.length * 110)
+      : 150;
     const id = `major:${group.id}`;
-    nodes.push({ id, position: { x: 660, y: row + height / 2 - 50 }, sourcePosition: Position.Right, targetPosition: Position.Left,
-      data: { label: <button className="major-node-button nodrag" aria-expanded={isExpanded} onClick={() => toggleGroup(group.id)}>
-        <strong>{group.label}</strong><span>{group.courses.length} connected subjects · {isExpanded ? "Collapse −" : "Expand +"}</span></button> },
-      className: "progression-major" });
-    addEdge("target", id);
-    if (isExpanded) group.courses.forEach((course, index) => {
-      const courseId = `${id}:${course.subject_id}`;
-      nodes.push(courseNode(course, courseId, 1060, row + index * 110, "downstream-course"));
-      addEdge(id, courseId);
+    nodes.push({
+      id,
+      position: { x: 900, y: row + height / 2 - 50 },
+      sourcePosition: Position.Right,
+      targetPosition: Position.Left,
+      data: {
+        label: (
+          <button
+            className="major-node-button nodrag"
+            aria-expanded={isExpanded}
+            onClick={() => toggleGroup(group.id)}
+          >
+            <strong>{group.label}</strong>
+            <span>
+              {group.courses.length} connected subjects ·{" "}
+              {isExpanded ? "Collapse −" : "Expand +"}
+            </span>
+          </button>
+        ),
+      },
+      className: "progression-major",
     });
+    addEdge("target", id);
+
+    if (isExpanded) {
+      group.courses.forEach((course, index) => {
+        const courseId = `${id}:${course.subject_id}`;
+        nodes.push(
+          courseNode(
+            course,
+            courseId,
+            1320,
+            row + index * 110,
+            "downstream-course",
+          ),
+        );
+        addEdge(id, courseId);
+      });
+    }
     row += height + 30;
   }
+
   const center = Math.max(0, row / 2 - 50);
-  nodes.push(courseNode(target, "target", 320, center, "target-course"));
-  prerequisiteCourses.forEach((course, index) => {
-    const id = `before:${course.subject_id}`;
-    nodes.push(courseNode(course, id, 0, Math.max(0, center - prerequisiteCourses.length * 55) + index * 110, "prerequisite-course"));
-    addEdge(id, "target");
-  });
+  nodes.push(courseNode(target, "target", 520, center, "target-course"));
+
+  // Reuse the same recursive prerequisite-road engine as the main Course Map.
+  // Only the selected course's node is replaced by the progression-page target;
+  // the remaining prerequisite courses are normalized to the left side so the
+  // future major/department branches on the right stay exactly as before.
+  if (prerequisiteGraph) {
+    const graphTarget = prerequisiteGraph.nodes.find(
+      (node) => node.id === familyByCourseId.get(target.subject_id)?.id,
+    );
+    const targetX = graphTarget?.position.x ?? 0;
+    const targetY = graphTarget?.position.y ?? 0;
+
+    for (const node of prerequisiteGraph.nodes) {
+      if (node.id === graphTarget?.id) continue;
+      const family = prerequisiteGraph.familyByNodeId.get(node.id);
+      if (!family) continue;
+
+      const id = `before:${family.id}`;
+      const x = 520 + (node.position.x - targetX) * 0.72;
+      const y = center + (node.position.y - targetY) * 0.8;
+      nodes.push(
+        courseNode(
+          family.primary,
+          id,
+          x,
+          y,
+          "prerequisite-course",
+        ),
+      );
+    }
+
+    for (const edge of prerequisiteGraph.edges) {
+      const sourceFamily = prerequisiteGraph.familyByNodeId.get(edge.source);
+      const targetFamily = prerequisiteGraph.familyByNodeId.get(edge.target);
+      if (!sourceFamily || !targetFamily) continue;
+
+      const sourceId =
+        sourceFamily.id === graphTarget?.id
+          ? "target"
+          : `before:${sourceFamily.id}`;
+      const targetId =
+        targetFamily.id === graphTarget?.id
+          ? "target"
+          : `before:${targetFamily.id}`;
+
+      if (sourceId !== targetId) addEdge(sourceId, targetId);
+    }
+  }
+
   const completed = earnedCourseIds(state).has(target.subject_id);
   const priorCredit = state.priorCredits.find(c => c.courseId === `mit:${target.subject_id}`);
   const picked = pickedCourseId ? catalog.find(course => course.subject_id === pickedCourseId) : undefined;
@@ -178,19 +351,19 @@ export default function PathwayPage() {
       <div className="progression-explainer">
         <div>
           <strong>Comes before</strong>
-          <span>Courses named in the catalog prerequisite rule</span>
+          <span>Recommended prerequisite road back toward foundational courses</span>
         </div>
         <div>
           <strong>This course</strong>
           <span>Your selected destination</span>
         </div>
         <div>
-          <strong>Choose a major</strong>
-          <span>Expand a program to see connected subjects</span>
+          <strong>Future directions</strong>
+          <span>Expand a major or department to see courses this can unlock</span>
         </div>
       </div>
 
-      <p className="data-note">Click a major to expand its subjects, then click a subject to add it to your plan or follow its progression (double-click opens it directly). Branches include subjects in the program’s department and its listed requirements; other subjects are grouped by department. Connections include GIR references and do not imply all prerequisites are satisfied.</p>
+      <p className="data-note">The left side uses the same recommended prerequisite-path logic as the main Map, including preference for courses already in your plan or completed history. On the right, expand a major or department to explore future courses connected to this subject. Connections are planning guidance and do not replace the official catalog prerequisite rule.</p>
       <div className="major-chips">{groups.map(group => <button className="chip" key={group.id} aria-expanded={expanded.has(group.id)} onClick={() => toggleGroup(group.id)}>{group.label} {expanded.has(group.id) ? "−" : "+"}</button>)}</div>
       {groups.length > 6 && <div className="branch-pagination">
         {expanded.size ? <button className="secondary-button" onClick={() => setExpanded(new Set())}>Back to all branches</button> : <>
