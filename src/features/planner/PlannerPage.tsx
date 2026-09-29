@@ -69,9 +69,10 @@ export default function PlannerPage() {
   }
 
   function openProgression(courseId: string) {
-    const id = "mit:" + courseId;
+    const subjectId = localId(courseId);
+    const id = "mit:" + subjectId;
     dispatch({ type: "OPEN_PATHWAY", courseId: id });
-    navigate("/course/" + encodeURIComponent(id));
+    navigate("/?course=" + encodeURIComponent(subjectId));
   }
 
   async function runAiSearch(event: FormEvent) {
