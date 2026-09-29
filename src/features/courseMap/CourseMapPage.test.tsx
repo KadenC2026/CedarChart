@@ -375,21 +375,78 @@ describe("course map forest layout", () => {
     expect(byId.get("1.004")).not.toEqual(byId.get("1.000"));
   });
 
-  it("reveals prerequisites only for selected courses", () => {
+  it("reveals the full prerequisite chain from one selected course", () => {
     const catalog = [
       course("1.001", "Foundation"),
       course("1.002", "Intermediate", "1.001"),
       course("1.003", "Advanced", "1.002"),
+      course("1.004", "Destination", "1.003"),
     ];
     const { families } = buildCourseFamilies(catalog);
-    const advanced = families.find((family) => family.id === "1.003")!;
-    const intermediate = families.find((family) => family.id === "1.002")!;
+    const destination = families.find((family) => family.id === "1.004")!;
 
-    const advancedOnly = buildPrerequisiteForest([advanced], families);
-    expect(advancedOnly.familyByNodeId.has("1.002")).toBe(true);
-    expect(advancedOnly.familyByNodeId.has("1.001")).toBe(false);
+    const graph = buildPrerequisiteForest([destination], families);
 
-    const bothSelected = buildPrerequisiteForest([intermediate, advanced], families);
-    expect(bothSelected.familyByNodeId.has("1.001")).toBe(true);
+    expect(new Set(graph.familyByNodeId.keys())).toEqual(
+      new Set(["1.001", "1.002", "1.003", "1.004"]),
+    );
+    expect(graph.edges.map((edge) => `${edge.source}->${edge.target}`))
+      .toEqual(expect.arrayContaining([
+        "1.001->1.002",
+        "1.002->1.003",
+        "1.003->1.004",
+      ]));
+  });
+
+  it("limits unresolved alternatives to two visible paths", () => {
+    const catalog = [
+      course("1.000", "Foundation A"),
+      course("2.000", "Foundation B"),
+      course("3.000", "Foundation C"),
+      course("1.001", "Option A", "1.000"),
+      course("2.001", "Option B", "2.000"),
+      course("3.001", "Option C", "3.000"),
+      course("4.001", "Destination", "1.001/2.001/3.001"),
+    ];
+    const { families } = buildCourseFamilies(catalog);
+    const destination = families.find((family) => family.id === "4.001")!;
+
+    const graph = buildPrerequisiteForest([destination], families);
+
+    expect(graph.familyByNodeId.has("1.001")).toBe(true);
+    expect(graph.familyByNodeId.has("2.001")).toBe(true);
+    expect(graph.familyByNodeId.has("3.001")).toBe(false);
+    expect(graph.familyByNodeId.has("1.000")).toBe(true);
+    expect(graph.familyByNodeId.has("2.000")).toBe(true);
+    expect(graph.familyByNodeId.has("3.000")).toBe(false);
+  });
+
+  it("prefers an alternative path that intersects a selected planned course", () => {
+    const catalog = [
+      course("1.000", "Foundation A"),
+      course("2.000", "Foundation B"),
+      course("3.000", "Foundation C"),
+      course("1.001", "Option A", "1.000"),
+      course("2.001", "Option B", "2.000"),
+      course("3.001", "Option C", "3.000"),
+      course("4.001", "Destination", "1.001/2.001/3.001"),
+    ];
+    const { families } = buildCourseFamilies(catalog);
+    const targets = families.filter((family) =>
+      ["3.001", "4.001"].includes(family.id),
+    );
+
+    const graph = buildPrerequisiteForest(targets, families);
+
+    expect(graph.logicByNodeId.size).toBe(0);
+    expect(graph.familyByNodeId.has("3.001")).toBe(true);
+    expect(graph.familyByNodeId.has("3.000")).toBe(true);
+    expect(graph.familyByNodeId.has("1.001")).toBe(false);
+    expect(graph.familyByNodeId.has("2.001")).toBe(false);
+    expect(graph.edges.map((edge) => `${edge.source}->${edge.target}`))
+      .toEqual(expect.arrayContaining([
+        "3.000->3.001",
+        "3.001->4.001",
+      ]));
   });
 });
