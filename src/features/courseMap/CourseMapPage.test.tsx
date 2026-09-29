@@ -425,7 +425,7 @@ describe("course map forest layout", () => {
     expect(graph.familyByNodeId.has("3.000")).toBe(false);
   });
 
-  it("prefers an alternative path that intersects a selected planned course", () => {
+  it("keeps two pathways while preferring one that intersects the student's plan", () => {
     const catalog = [
       course("1.000", "Foundation A"),
       course("2.000", "Foundation B"),
@@ -436,21 +436,30 @@ describe("course map forest layout", () => {
       course("4.001", "Destination", "1.001/2.001/3.001"),
     ];
     const { families } = buildCourseFamilies(catalog);
-    const targets = families.filter((family) =>
-      ["3.001", "4.001"].includes(family.id),
+    const destination = families.find((family) => family.id === "4.001")!;
+
+    const graph = buildPrerequisiteForest(
+      [destination],
+      families,
+      new Map([["3.001", 2]]),
+      new Map(),
+      new Set(),
+      new Set(),
+      new Set(),
+      new Set(["3.001"]),
     );
 
-    const graph = buildPrerequisiteForest(targets, families);
-
-    expect(graph.logicByNodeId.size).toBe(0);
     expect(graph.familyByNodeId.has("3.001")).toBe(true);
     expect(graph.familyByNodeId.has("3.000")).toBe(true);
-    expect(graph.familyByNodeId.has("1.001")).toBe(false);
-    expect(graph.familyByNodeId.has("2.001")).toBe(false);
+
+    const alternativesShown = ["1.001", "2.001"]
+      .filter((id) => graph.familyByNodeId.has(id));
+    expect(alternativesShown).toHaveLength(1);
+
+    expect(graph.familyByNodeId.has("3.001")).toBe(true);
     expect(graph.edges.map((edge) => `${edge.source}->${edge.target}`))
       .toEqual(expect.arrayContaining([
         "3.000->3.001",
-        "3.001->4.001",
       ]));
   });
 });
