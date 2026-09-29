@@ -314,8 +314,14 @@ function buildPrerequisiteGraph(
   const logicByNodeId = new Map<string, LogicNodeData>();
   const replacementPositionSourceByNodeId = new Map<string, string>();
   const directPrerequisitePermissionByNodeId = new Map<string, Array<{ prerequisiteId: string; targetLabel: string }>>();
+  const expandedFamilyIds = new Set<string>();
+  const expansionStack = new Set<string>();
+  const preferenceScoreCache = new Map<string, number>();
+  const preferenceScoreStack = new Set<string>();
   discovered.set(target.id, target);
   const maxNodes = 70;
+  const maxDepth = 12;
+  const maxAlternativePaths = 2;
 
   const addEdge = (source: string, edgeTarget: string, arrow = true) => {
     const edgeKey = `${source}->${edgeTarget}`;
@@ -334,46 +340,132 @@ function buildPrerequisiteGraph(
     discovered.set(family.id, family);
   };
 
+  const preferenceScoreForFamily = (family: CourseFamily, depth = 0): number => {
+    const cached = preferenceScoreCache.get(family.id);
+    if (cached != null) return cached;
+    if (depth >= maxDepth || preferenceScoreStack.has(family.id)) return 0;
+
+    let score = 0;
+    if (selectedFamilyIds.has(family.id)) score += 10_000;
+    if (satisfiedFamilyIds.has(family.id)) score += 5_000;
+
+    preferenceScoreStack.add(family.id);
+    const expression = parseCatalogPrerequisites(family.primary.prerequisites ?? "");
+    if (expression) {
+      const descendants = familiesInExpression(expression, families);
+      const descendantScore = descendants.reduce(
+        (best, descendant) =>
+          Math.max(best, preferenceScoreForFamily(descendant, depth + 1)),
+        0,
+      );
+      score += descendantScore * 0.85;
+    }
+    preferenceScoreStack.delete(family.id);
+    preferenceScoreCache.set(family.id, score);
+    return score;
+  };
+
+  const preferenceScoreForExpression = (expression: CatalogPrerequisiteExpression) =>
+    familiesInExpression(expression, families).reduce(
+      (best, family) => Math.max(best, preferenceScoreForFamily(family)),
+      0,
+    );
+
+  const connectFamilyPrerequisites = (
+    family: CourseFamily,
+    depth: number,
+  ) => {
+    if (
+      depth >= maxDepth ||
+      expandedFamilyIds.has(family.id) ||
+      expansionStack.has(family.id) ||
+      discovered.size + logicByNodeId.size >= maxNodes
+    ) return;
+
+    expandedFamilyIds.add(family.id);
+    if (instructorPermissionCourseIds.has(`mit:${family.primary.subject_id}`)) return;
+
+    const expression = parseCatalogPrerequisites(family.primary.prerequisites ?? "");
+    if (!expression) return;
+
+    expansionStack.add(family.id);
+    connectExpression(
+      expression,
+      family.id,
+      family.primary.subject_id,
+      true,
+      family,
+      depth,
+    );
+    expansionStack.delete(family.id);
+  };
+
   const connectExpression = (
     expression: CatalogPrerequisiteExpression,
     edgeTarget: string,
     path: string,
     flattenAll: boolean,
+    ownerFamily: CourseFamily,
+    depth: number,
   ) => {
-    if (discovered.size + logicByNodeId.size >= maxNodes) return;
+    if (discovered.size + logicByNodeId.size >= maxNodes || depth >= maxDepth) return;
+
     if (expression.type === "token") {
       const family = familyForPrerequisiteToken(expression.value, families);
-      if (!family || family.id === edgeTarget) return;
-      const directPrerequisiteId = `${target.primary.subject_id}:${family.id}`;
-      if (!logicByNodeId.has(edgeTarget) && instructorPermissionPrerequisiteIds.has(directPrerequisiteId)) return;
+      if (!family || family.id === edgeTarget || expansionStack.has(family.id)) return;
+
+      const directPrerequisiteId = `${ownerFamily.primary.subject_id}:${family.id}`;
+      if (
+        !logicByNodeId.has(edgeTarget) &&
+        instructorPermissionPrerequisiteIds.has(directPrerequisiteId)
+      ) return;
+
       discover(family);
       if (!logicByNodeId.has(edgeTarget) && !satisfiedFamilyIds.has(family.id)) {
         directPrerequisitePermissionByNodeId.set(family.id, [
           ...(directPrerequisitePermissionByNodeId.get(family.id) ?? []),
-          { prerequisiteId: directPrerequisiteId, targetLabel: target.label },
+          {
+            prerequisiteId: directPrerequisiteId,
+            targetLabel: ownerFamily.label,
+          },
         ]);
       }
       addEdge(family.id, edgeTarget, !logicByNodeId.has(edgeTarget));
+      connectFamilyPrerequisites(family, depth + 1);
       return;
     }
 
     if (expression.type === "all" && flattenAll) {
       expression.children.forEach((child, index) =>
-        connectExpression(child, edgeTarget, `${path}.${index}`, true),
+        connectExpression(
+          child,
+          edgeTarget,
+          `${path}.${index}`,
+          true,
+          ownerFamily,
+          depth,
+        ),
       );
       return;
     }
 
     if (expression.type === "any") {
-      const branchFamilies = expression.children.map((child) => familiesInExpression(child, families));
+      const branchFamilies = expression.children.map((child) =>
+        familiesInExpression(child, families),
+      );
       const uniqueFamilies = new Map(
         branchFamilies.flat().map((family) => [family.id, family]),
       );
-      if (branchFamilies.every((branch) => branch.length > 0) && uniqueFamilies.size === 1) {
+
+      if (
+        branchFamilies.every((branch) => branch.length > 0) &&
+        uniqueFamilies.size === 1
+      ) {
         const family = [...uniqueFamilies.values()][0];
         if (family.id !== edgeTarget) {
           discover(family);
           addEdge(family.id, edgeTarget, !logicByNodeId.has(edgeTarget));
+          connectFamilyPrerequisites(family, depth + 1);
         }
         return;
       }
@@ -384,31 +476,72 @@ function buildPrerequisiteGraph(
         if (family && family.id !== edgeTarget) {
           discover(family);
           addEdge(family.id, edgeTarget, !logicByNodeId.has(edgeTarget));
+          connectFamilyPrerequisites(family, depth + 1);
         }
         return;
       }
 
-      const logicId = `logic:${edgeTarget}:${path}:${expression.type}`;
-      const instructorPermissionChoiceId = `${target.primary.subject_id}:${path}`;
-      // Selecting the permission option satisfies this particular OR group. It
-      // intentionally leaves any sibling prerequisites in an AND group visible.
+      const instructorPermissionChoiceId =
+        `${ownerFamily.primary.subject_id}:${path}`;
       if (instructorPermissionChoiceIds.has(instructorPermissionChoiceId)) return;
-      const selectedOptions = allOptions.filter((family) => selectedFamilyIds.has(family.id));
-      if (selectedOptions.length > 0) {
-        selectedOptions.forEach((family) => {
-          discover(family);
-          replacementPositionSourceByNodeId.set(family.id, logicId);
-          addEdge(family.id, edgeTarget, !logicByNodeId.has(edgeTarget));
+
+      const selectedBranchIndexes = branchFamilies
+        .map((branch, index) => ({
+          index,
+          selected: branch.some((family) => selectedFamilyIds.has(family.id)),
+        }))
+        .filter((entry) => entry.selected)
+        .map((entry) => entry.index);
+
+      if (selectedBranchIndexes.length > 0) {
+        selectedBranchIndexes.slice(0, maxAlternativePaths).forEach((index) => {
+          const child = expression.children[index];
+          const branch = branchFamilies[index];
+          branch.forEach((family) => {
+            replacementPositionSourceByNodeId.set(
+              family.id,
+              `logic:${edgeTarget}:${path}:${expression.type}`,
+            );
+          });
+          connectExpression(
+            child,
+            edgeTarget,
+            `${path}.${index}`,
+            false,
+            ownerFamily,
+            depth,
+          );
         });
         return;
       }
 
+      const rankedBranchIndexes = expression.children
+        .map((child, index) => ({
+          index,
+          score: preferenceScoreForExpression(child),
+        }))
+        .sort((a, b) => b.score - a.score || a.index - b.index)
+        .slice(0, maxAlternativePaths)
+        .map((entry) => entry.index);
+
+      const logicId = `logic:${edgeTarget}:${path}:${expression.type}`;
       logicByNodeId.set(logicId, {
         kind: expression.type,
         optionFamilies: allOptions,
         instructorPermissionChoiceId,
         instructorPermissionSelected: false,
       });
+
+      rankedBranchIndexes.forEach((index) =>
+        connectExpression(
+          expression.children[index],
+          logicId,
+          `${path}.${index}`,
+          false,
+          ownerFamily,
+          depth,
+        ),
+      );
       addEdge(logicId, edgeTarget, !logicByNodeId.has(edgeTarget));
       return;
     }
@@ -419,25 +552,30 @@ function buildPrerequisiteGraph(
       optionFamilies: [],
     });
     expression.children.forEach((child, index) =>
-      connectExpression(child, logicId, `${path}.${index}`, false),
+      connectExpression(
+        child,
+        logicId,
+        `${path}.${index}`,
+        false,
+        ownerFamily,
+        depth,
+      ),
     );
     addEdge(logicId, edgeTarget, !logicByNodeId.has(edgeTarget));
   };
 
-  // Only selected roots reveal prerequisites. A prerequisite that is also selected
-  // is expanded by its own tree when the forest merges the selected roots.
-  const instructorPermissionWaivesPrerequisites = instructorPermissionCourseIds.has(`mit:${target.primary.subject_id}`);
-  // A recorded waiver replaces the prerequisite branches for this course. The
-  // card remains in the map, visibly marked so the planning assumption is clear.
-  if (!instructorPermissionWaivesPrerequisites) {
-    const expression = parseCatalogPrerequisites(target.primary.prerequisites ?? "");
-    if (expression) connectExpression(expression, target.id, target.primary.subject_id, true);
-  }
+  // Expand backward from the selected course automatically. This is the core
+  // course-map experience: one search should reveal a useful chain all the way
+  // toward foundational subjects instead of requiring each prerequisite to be
+  // scheduled before its own prerequisites become visible.
+  connectFamilyPrerequisites(target, 0);
 
   return {
     nodes: [],
     edges,
-    familyByNodeId: new Map([...discovered].map(([id, family]) => [id, family])),
+    familyByNodeId: new Map(
+      [...discovered].map(([id, family]) => [id, family]),
+    ),
     logicByNodeId,
     replacementPositionSourceByNodeId,
     directPrerequisitePermissionByNodeId,
